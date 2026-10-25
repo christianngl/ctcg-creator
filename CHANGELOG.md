@@ -4,6 +4,12 @@ Alle für Nutzer spürbaren Änderungen an cTCG Creator (früher Card Creator).
 
 ## [Unveröffentlicht]
 
+- Karten lassen sich löschen (Knopf „Löschen …“ im Editor oder ✕ auf der Kachel in der Übersicht) und per Drag & Drop umsortieren: einfach eine Karte auf die Stelle einer anderen ziehen. Die Nummern bleiben fortlaufend, Karten mit neuer Nummer bekommen eine neue Version, Besitz und Titelkarte ziehen mit. Gelöschte Karten landen im Ordner „papierkorb“ des Sets.
+- Nach dem Umsortieren oder Löschen fragt die App, ob die betroffenen Karten gleich neu als PNG gespeichert werden sollen. Mit „Später“ arbeitet man erst weiter, der Knopf „Alle als PNG“ zeigt bis dahin an, wie viele PNGs veraltet sind. Alte PNGs liegen dann unter export/png/veraltet.
+- Das Band unter dem Fotofenster zeigt immer automatisch die Kartennummer: „Nr. 003 · Text 1 · Text 2“. Text 1 und Text 2 gibt man im Formular ein, die Nummer passt sich beim Umsortieren selbst an.
+- Eine neue, noch nicht gespeicherte Karte erscheint gleich als Kachel in der Seitenleiste. So kann man zwischendurch andere Karten ansehen und mit einem Klick auf die Kachel weiterarbeiten, ohne etwas zu verlieren.
+- Formular und Vorschau haben jetzt einen hellgrauen Hintergrund statt des dunklen Blaus. Unter „Ansicht → Hintergrund der Bearbeitung“ lässt sich Hellgrau, Mittelgrau oder das bisherige Dunkelblau wählen.
+
 ## [0.4.0] – 2026-10-24
 
 - Neues Layout „Energiekarte“ für Spielkarten-Sets: Foto über die ganze Karte, Name und 1 bis 5 große Energie-Symbole in der Farbe des gewählten Typs. Die Anzahl der Symbole legt man im Formular fest (per Kommandozeile Layout `energie` mit `energien`).

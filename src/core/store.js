@@ -271,6 +271,109 @@ function uebertrageStil(ordner, quelle, ziele) {
   });
 }
 
+// PNG-Dateien in export/png/, die zu einer Kartennummer gehören (mit und ohne Beschnitt, alle Versionen)
+function pngDateien(set, nummer) {
+  const dir = path.join(set.ordner, 'export', 'png');
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter((f) => f.startsWith(`${set.kuerzel}-${nr3(nummer)}_v`) && f.endsWith('.png')).map((f) => path.join(dir, f));
+}
+
+// Verschiebt Dateien nach ziel (Ordner wird angelegt). Gleichnamige Dateien dort werden nicht überschrieben.
+function verschiebeDateien(dateien, ziel) {
+  if (!dateien.length) return;
+  fs.mkdirSync(ziel, { recursive: true });
+  for (const d of dateien) {
+    const ext = path.extname(d);
+    let neu = path.join(ziel, path.basename(d));
+    for (let i = 2; fs.existsSync(neu); i++) neu = path.join(ziel, `${path.basename(d, ext)}_${i}${ext}`);
+    fs.renameSync(d, neu);
+  }
+}
+
+// Nummeriert die Karten in der Reihenfolge von "reihenfolge" (bisherige Nummern) fortlaufend ab 1 durch.
+// Jede Karte mit neuer Nummer zieht samt allen Versionen in den neuen Ordner und bekommt eine neue Version mit der
+// neuen Nummer. Sammlung und Titelkarte ziehen mit, alte PNGs dieser Karten kommen nach export/png/veraltet/,
+// und die Karten stehen in set.json unter png_veraltet, bis sie neu gerendert sind.
+function ordneKarten(ordner, reihenfolge) {
+  const set = ladeSet(ordner);
+  const alle = nummern(set.ordner);
+  const liste = reihenfolge.map(Number);
+  if (liste.length !== alle.length || new Set(liste).size !== liste.length || !liste.every((n) => alle.includes(n))) {
+    throw new Fehler('Die neue Reihenfolge muss jede Karte des Sets genau einmal enthalten.', 'reihenfolge_ungueltig');
+  }
+  const wechsel = liste.map((alt, i) => ({ alt, neu: i + 1 })).filter((w) => w.alt !== w.neu);
+  if (!wechsel.length) return [];
+  const karten = path.join(set.ordner, 'karten');
+  // Erst alle beiseite, dann an die neuen Nummern, damit sich die Ordner nicht in die Quere kommen
+  for (const w of wechsel) {
+    verschiebeDateien(pngDateien(set, w.alt), path.join(set.ordner, 'export', 'png', 'veraltet'));
+    fs.renameSync(kartenOrdner(set.ordner, w.alt), path.join(karten, `umbau-${nr3(w.alt)}`));
+  }
+  const jetzt = new Date().toISOString();
+  const ergebnis = wechsel.map((w) => {
+    fs.renameSync(path.join(karten, `umbau-${nr3(w.alt)}`), kartenOrdner(set.ordner, w.neu));
+    const alt = ladeKarte(set.ordner, w.neu);
+    const karte = { ...alt, nummer: w.neu, version: alt.version + 1, geaendert: jetzt, umnummeriert: { von: w.alt, am: jetzt.slice(0, 10) } };
+    speichereVersion(set.ordner, karte);
+    return { alt: w.alt, neu: w.neu, version: karte.version, name: karte.name };
+  });
+
+  const neuVon = new Map(wechsel.map((w) => [w.alt, w.neu]));
+  const nachher = (n) => neuVon.get(Number(n)) ?? Number(n);
+  const sammlung = ladeSammlung(set.ordner);
+  const neueSammlung = {};
+  for (const [n, eintrag] of Object.entries(sammlung)) neueSammlung[nachher(n)] = eintrag;
+  schreibeJson(path.join(set.ordner, 'sammlung.json'), neueSammlung);
+
+  const { ordner: _o, ...daten } = set;
+  if (daten.titelkarte) daten.titelkarte = nachher(daten.titelkarte);
+  daten.png_veraltet = [...new Set([...(daten.png_veraltet || []).map(nachher), ...ergebnis.map((e) => e.neu)])].sort((a, b) => a - b);
+  schreibeJson(setDatei(set.ordner), daten);
+  return ergebnis;
+}
+
+// Setzt Karte nr an die Stelle von Karte ziel, die Karten dazwischen rücken auf. Liefert die geänderten Nummern (ordneKarten).
+function verschiebeKarte(ordner, nr, ziel) {
+  const alle = nummern(path.resolve(ordner));
+  nr = Number(nr);
+  ziel = Number(ziel);
+  for (const n of [nr, ziel]) if (!alle.includes(n)) throw new Fehler(`Karte ${n} gibt es im Set nicht.`, 'karte_fehlt');
+  const liste = alle.filter((n) => n !== nr);
+  liste.splice(alle.indexOf(ziel), 0, nr);
+  return ordneKarten(ordner, liste);
+}
+
+// Löscht eine Karte: Sie kommt mit allen Versionen, ihrem Sammlungseintrag und ihren PNGs in den Ordner papierkorb/
+// des Sets (lässt sich von Hand zurückholen). Die folgenden Karten rücken auf, damit die Nummern fortlaufend bleiben.
+function loescheKarte(ordner, nr) {
+  const set = ladeSet(ordner);
+  nr = Number(nr);
+  const karte = ladeKarte(set.ordner, nr);
+  const stempel = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  const ziel = path.join(set.ordner, 'papierkorb', `${stempel}_${nr3(nr)}_${String(karte.name || 'ohne-name').replace(/[^\w.-]+/g, '_')}`);
+  fs.mkdirSync(path.dirname(ziel), { recursive: true });
+  fs.renameSync(kartenOrdner(set.ordner, nr), ziel);
+  verschiebeDateien(pngDateien(set, nr), path.join(ziel, 'png'));
+  const sammlung = ladeSammlung(set.ordner);
+  if (sammlung[nr]) schreibeJson(path.join(ziel, 'sammlung.json'), sammlung[nr]);
+  delete sammlung[nr];
+  schreibeJson(path.join(set.ordner, 'sammlung.json'), sammlung);
+  const { ordner: _o, ...daten } = set;
+  if (daten.titelkarte === nr) daten.titelkarte = null;
+  if (daten.png_veraltet) daten.png_veraltet = daten.png_veraltet.filter((n) => n !== nr);
+  schreibeJson(setDatei(set.ordner), daten);
+  return { geloescht: { nummer: nr, name: karte.name || null, papierkorb: ziel }, umnummeriert: ordneKarten(set.ordner, nummern(set.ordner)) };
+}
+
+// Nach dem Rendern: diese Karten haben wieder ein aktuelles PNG
+function pngErneuert(ordner, liste) {
+  const set = ladeSet(ordner);
+  if (!(set.png_veraltet || []).length) return;
+  const { ordner: _o, ...daten } = set;
+  daten.png_veraltet = daten.png_veraltet.filter((n) => !liste.includes(n));
+  schreibeJson(setDatei(set.ordner), daten);
+}
+
 function ladeSammlung(ordner) {
   const datei = path.join(ordner, 'sammlung.json');
   return fs.existsSync(datei) ? leseJson(datei) : {};
@@ -329,6 +432,10 @@ module.exports = {
   aendereKarte,
   kopiereKarte,
   uebertrageStil,
+  ordneKarten,
+  verschiebeKarte,
+  loescheKarte,
+  pngErneuert,
   importiereBild,
   ladeSammlung,
   setzeBesitz,

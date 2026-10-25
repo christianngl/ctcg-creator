@@ -35,6 +35,23 @@ function speichereListe(liste) {
   fs.writeFileSync(ZULETZT(), JSON.stringify(liste, null, 2));
 }
 
+// Einstellungen der App (nicht pro Set), z. B. der Hintergrund der Bearbeitung
+const EINSTELLUNGEN = () => path.join(app.getPath('userData'), 'einstellungen.json');
+const HINTERGRUENDE = [['hell', 'Hellgrau'], ['mittel', 'Mittelgrau'], ['dunkel', 'Dunkelblau (wie die Kopfzeile)']];
+
+function einstellungen() {
+  try {
+    return { hintergrund: 'hell', ...JSON.parse(fs.readFileSync(EINSTELLUNGEN(), 'utf8')) };
+  } catch {
+    return { hintergrund: 'hell' };
+  }
+}
+
+function speichereEinstellung(schluessel, wert) {
+  fs.mkdirSync(path.dirname(EINSTELLUNGEN()), { recursive: true });
+  fs.writeFileSync(EINSTELLUNGEN(), JSON.stringify({ ...einstellungen(), [schluessel]: wert }, null, 2));
+}
+
 function setInfo(ordner) {
   const set = store.ladeSet(ordner);
   const v = vorlage(set.vorlage);
@@ -88,6 +105,9 @@ bediene('karte:laden', (ordner, nr, version) => ({ karte: store.ladeKarte(ordner
 bediene('karte:neu', (ordner, daten) => store.neueKarte(ordner, daten, { entwurf: true }));
 bediene('karte:aendern', (ordner, nr, daten) => store.aendereKarte(ordner, nr, daten, { entwurf: true, ersetzen: true }));
 bediene('karte:kopieren', (ordner, nr, version) => store.kopiereKarte(ordner, nr, { version }));
+bediene('karte:verschieben', (ordner, nr, ziel) => store.verschiebeKarte(ordner, nr, ziel));
+bediene('karte:loeschen', (ordner, nr) => store.loescheKarte(ordner, nr));
+bediene('einstellungen', () => einstellungen());
 bediene('karte:stil', (ordner, von, nummern) => store.uebertrageStil(ordner, von, nummern));
 bediene('bild:importieren', (ordner, pfad) => store.importiereBild(ordner, pfad));
 bediene('bild:waehlen', async (ordner) => {
@@ -134,6 +154,11 @@ function baueMenue() {
     { label: 'Ansicht', submenu: [
       { role: 'reload', label: 'Neu laden' },
       { role: 'toggleDevTools', label: 'Entwicklertools' },
+      { type: 'separator' },
+      { label: 'Hintergrund der Bearbeitung', submenu: HINTERGRUENDE.map(([wert, label]) => ({
+        label, type: 'radio', checked: einstellungen().hintergrund === wert,
+        click: () => { speichereEinstellung('hintergrund', wert); fenster.webContents.send('einstellungen', einstellungen()); },
+      })) },
       { type: 'separator' },
       { role: 'resetZoom', label: 'Originalgröße' },
       { role: 'zoomIn', label: 'Vergrößern' },

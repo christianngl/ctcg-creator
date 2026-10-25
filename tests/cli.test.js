@@ -100,3 +100,22 @@ test('Karte über die Kommandozeile kopieren', () => {
   assert.equal(r.kopiert_von.nummer, 1);
   assert.equal(cli('karte', 'zeigen', '--set', ordner, '--nr', String(r.nummer)).karte.name, 'Probe-Held');
 });
+
+test('Karten über die Kommandozeile verschieben und löschen, Rendern macht PNGs wieder aktuell', () => {
+  const vorher = cli('liste', '--set', ordner).karten.length;
+  const letzte = String(vorher);
+  const v = cli('karte', 'verschieben', '--set', ordner, '--nr', letzte, '--nach', '1');
+  assert.equal(v.ok, true);
+  assert.equal(v.umnummeriert[0].neu, 1);
+  assert.equal(v.png_veraltet.length, vorher);
+  // Löschen nur mit ausdrücklicher Bestätigung
+  const ohne = cli('karte', 'loeschen', '--set', ordner, '--nr', '1');
+  assert.equal(ohne.exit, 2);
+  assert.equal(ohne.code, 'bestaetigung_fehlt');
+  const l = cli('karte', 'loeschen', '--set', ordner, '--nr', '1', '--ja');
+  assert.equal(l.ok, true);
+  assert.equal(cli('liste', '--set', ordner).karten.length, vorher - 1);
+  assert.ok(fs.existsSync(l.geloescht.papierkorb));
+  cli('rendern', '--set', ordner, '--nr', '1');
+  assert.ok(!cli('set', 'zeigen', '--set', ordner).set.png_veraltet.includes(1));
+});

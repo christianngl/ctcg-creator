@@ -84,7 +84,8 @@ const FELDER = {
     entwickelt_aus: 'Name der Vorstufe, optional',
     kp: 'Zahl (Pflicht)',
     typ: 'Name eines Typs des Sets (Pflicht)',
-    band: 'Kurzinfo im Band unter dem Foto, optional (auch bei regenbogen-normal)',
+    band: 'Text 1 im Band unter dem Foto, optional (auch bei regenbogen-normal). Das Band zeigt immer "Nr. 007 · Text 1 · Text 2", die Nummer kommt automatisch',
+    band2: 'Text 2 im Band unter dem Foto, optional',
     attacken: '[{ kosten: [Typname, …], name, schaden, text }] – 1 bis 2 (Pflicht)',
     schwaeche: 'Text, optional',
     resistenz: 'Text, optional',
@@ -275,9 +276,22 @@ function folieHtml(karte) {
   return `<div class="fx fx-${f.art}" style="opacity:${staerke}">${inhalt}</div>`;
 }
 
+// Kartennummer mit führenden Nullen, mindestens dreistellig (007), bei großen Sets so breit wie die Gesamtzahl
+function nrText(karte, gesamt) {
+  return String(karte.nummer || 0).padStart(Math.max(3, String(gesamt || 0).length), '0');
+}
+
+// Band unter dem Fotofenster: "Nr. 007 · Text 1 · Text 2". Die Nummer setzt die App, deshalb stimmt sie auch nach dem
+// Umsortieren. Hat jemand die Nummer früher von Hand in Text 1 geschrieben, wird sie nicht doppelt gezeigt.
+function band(karte, gesamt) {
+  const text1 = String(karte.band || '').replace(/^\s*Nr\.?\s*\d+\s*(·\s*)?/i, '');
+  const teile = [`Nr. ${nrText(karte, gesamt)}`, text1, karte.band2].map((t) => String(t || '').trim()).filter(Boolean);
+  return `<div class="ribbon" data-anpassen>${esc(teile.join(' · '))}</div>`;
+}
+
 function fusszeile(set, karte, gesamt) {
   const breite = Math.max(3, String(gesamt || 0).length);
-  const nr = String(karte.nummer || 0).padStart(breite, '0');
+  const nr = nrText(karte, gesamt);
   const ges = String(gesamt || 0).padStart(breite, '0');
   const sel = (set.seltenheiten || []).find((s) => s.name === karte.seltenheit);
   const sym = sel ? `<span class="sym${sel.glanz ? ' glanz' : ''}">${esc(sel.symbol)}</span>` : '';
@@ -333,7 +347,7 @@ function karteHtml(set, karte, { bildUrl, gesamt }) {
     teile.push(name(karte));
     teile.push(`<div class="hp"><small>KP</small>${esc(karte.kp)}</div>`);
     if (typ) teile.push(`<div class="energy">${esc(typ.symbol)}</div>`);
-    if (['normal', 'regenbogen-normal'].includes(karte.layout) && karte.band) teile.push(`<div class="ribbon" data-anpassen>${esc(karte.band)}</div>`);
+    if (['normal', 'regenbogen-normal'].includes(karte.layout)) teile.push(band(karte, gesamt));
     const atks = (karte.attacken || []).map((a) => {
       const kosten = (a.kosten || []).map((k) => energie(set, k)).join('');
       const text = a.text ? `<p>${absatz(a.text)}</p>` : '';

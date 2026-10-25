@@ -15,11 +15,11 @@ function meldung(art, text, punkte = [], aktion = null) {
   m.hidden = false;
   m.className = art;
   m.innerHTML = esc(text) + (punkte.length ? `<ul>${punkte.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : '');
-  if (aktion) {
-    const a = document.createElement('a');
-    a.textContent = ` ${aktion.text}`;
-    a.onclick = aktion.fn;
-    m.append(a);
+  for (const a of [aktion || []].flat()) {
+    const link = document.createElement('a');
+    link.textContent = ` ${a.text}`;
+    link.onclick = a.fn;
+    m.append(link);
   }
 }
 
@@ -105,6 +105,11 @@ function leseFormatFeld(ziel) {
 // ---------- Start ----------
 
 async function zeigeStart() {
+  merkeEntwurf();
+  const e = zustand.entwurf;
+  if (e && (e.name || e.bild?.datei) && !confirm('Die neue Karte ist noch nicht gespeichert und geht beim Schließen des Sets verloren. Trotzdem schließen?')) return;
+  zustand.entwurf = null;
+  zustand.karte = null;
   zustand.info = null;
   zeigeAnsicht('start');
   $('#setTitel').textContent = '';
@@ -181,32 +186,82 @@ function setzeTitel() {
 async function zeigeSet(info) {
   zustand.info = info;
   zustand.nr = null;
+  zustand.karte = null;
+  zustand.entwurf = null;
   setzeTitel();
+  zeigePngStand();
   await zeigeUebersicht();
 }
 
 // Sprechblase auf der Kachel, wenn die Karte einen Kommentar hat (Text als Tooltip)
 const kommentarMarke = (k) => (k.kommentar ? `<span class="kommentar" title="${esc(k.kommentar)}">💬</span>` : '');
+const nr3 = (n) => String(n).padStart(3, '0');
+
+// Kachel einer Karte. mini = Seitenleiste des Editors (kürzere Angaben, ohne Löschknopf)
+function kachelHtml(k, mini) {
+  const info = mini ? `${k.besitz ? ` · ${k.besitz}×` : ''}` : `${k.besitz ? ` · ${k.besitz}× im Besitz` : ''}${k.gedruckt ? ' · gedruckt' : ''}`;
+  return `<div class="kachel karte${mini && k.nummer === zustand.nr ? ' aktiv' : ''}" data-nr="${k.nummer}" title="Zum Umsortieren auf eine andere Karte ziehen">
+      <div class="bild"><img alt="" draggable="false">${kommentarMarke(k)}</div>
+      <div class="text"><b>${nr3(k.nummer)} ${esc(k.name || 'ohne Name')}</b>
+      <span>${k.entwurf ? '<em>Entwurf</em> · ' : ''}v${k.version}${info}</span></div>
+      ${mini ? '' : '<button class="vergessen" data-loeschen title="Karte löschen …">✕</button>'}
+    </div>`;
+}
+
+// Kachel der neuen, noch nicht gespeicherten Karte. So kann man zwischendurch andere Karten ansehen, ohne sie zu verlieren.
+function entwurfKachel(mini) {
+  if (!zustand.entwurf) return '';
+  const aktiv = mini && zustand.nr === null && !$('#arbeit').hidden ? ' aktiv' : '';
+  return `<div class="kachel karte neu${aktiv}" data-neu title="Neue Karte, noch nicht gespeichert">
+      <div class="bild"><span class="plus">✎</span></div>
+      <div class="text"><b>${esc(zustand.entwurf.name || 'Neue Karte')}</b><span><em>nicht gespeichert</em></span></div>
+    </div>`;
+}
+
+// Klick, Drag & Drop zum Umsortieren und Löschknopf für die Kacheln eines Grids
+function verbindeKacheln(grid, ordner) {
+  const auftraege = [];
+  const art = 'application/x-ctcg-karte';
+  grid.querySelectorAll('.kachel[data-nr]').forEach((k) => {
+    const nr = Number(k.dataset.nr);
+    k.onclick = () => waehleKarte(nr);
+    k.draggable = true;
+    k.ondragstart = (e) => { e.dataTransfer.setData(art, String(nr)); e.dataTransfer.effectAllowed = 'move'; k.classList.add('ziehen'); };
+    k.ondragend = () => k.classList.remove('ziehen');
+    k.ondragover = (e) => {
+      if (!e.dataTransfer.types.includes(art)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      k.classList.add('ablage');
+    };
+    k.ondragleave = () => k.classList.remove('ablage');
+    k.ondrop = (e) => {
+      if (!e.dataTransfer.types.includes(art)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      k.classList.remove('ablage');
+      const von = Number(e.dataTransfer.getData(art));
+      if (von && von !== nr) verschiebeKarte(von, nr);
+    };
+    const loeschen = k.querySelector('[data-loeschen]');
+    if (loeschen) loeschen.onclick = (e) => { e.stopPropagation(); loescheKarte(nr, k.querySelector('b').textContent); };
+    auftraege.push({ ordner, nr, img: k.querySelector('img') });
+  });
+  const neu = grid.querySelector('[data-neu]');
+  if (neu) neu.onclick = () => neueKarte();
+  return auftraege;
+}
 
 // Kartenübersicht als Grid mit Vorschaubildern der aktuellen Versionen
 async function zeigeUebersicht() {
+  merkeEntwurf();
   zeigeAnsicht('uebersicht');
   const ordner = zustand.info.set.ordner;
   const karten = await rufe('karten:liste', ordner);
-  const kacheln = karten.map((k) => `<div class="kachel karte" data-nr="${k.nummer}">
-      <div class="bild"><img alt="">${kommentarMarke(k)}</div>
-      <div class="text"><b>${String(k.nummer).padStart(3, '0')} ${esc(k.name || 'ohne Name')}</b>
-      <span>${k.entwurf ? '<em>Entwurf</em> · ' : ''}v${k.version}${k.besitz ? ` · ${k.besitz}× im Besitz` : ''}${k.gedruckt ? ' · gedruckt' : ''}</span></div>
-    </div>`);
-  $('#kartenGrid').innerHTML = kacheln.join('') || '<p class="hinweis">Noch keine Karten. Mit „+ Neue Karte“ legst du die erste an.</p>';
-  $('#kartenAnzahl').textContent = `${karten.length} ${karten.length === 1 ? 'Karte' : 'Karten'}`;
-  const auftraege = [];
-  $('#kartenGrid').querySelectorAll('.kachel[data-nr]').forEach((k) => {
-    const nr = Number(k.dataset.nr);
-    k.onclick = () => waehleKarte(nr);
-    auftraege.push({ ordner, nr, img: k.querySelector('img') });
-  });
-  ladeVorschauBilder(auftraege);
+  $('#kartenGrid').innerHTML = (karten.map((k) => kachelHtml(k, false)).join('') + entwurfKachel(false))
+    || '<p class="hinweis">Noch keine Karten. Mit „+ Neue Karte“ legst du die erste an.</p>';
+  $('#kartenAnzahl').textContent = `${karten.length} ${karten.length === 1 ? 'Karte' : 'Karten'}${karten.length > 1 ? ' · Zum Umsortieren eine Karte auf eine andere ziehen' : ''}`;
+  ladeVorschauBilder(verbindeKacheln($('#kartenGrid'), ordner));
 }
 
 function zeigeEditor() {
@@ -217,35 +272,32 @@ function zeigeEditor() {
 async function ladeListe() {
   const ordner = zustand.info.set.ordner;
   const karten = await rufe('karten:liste', ordner);
-  $('#karten').innerHTML = karten.map((k) => `<div class="kachel karte${k.nummer === zustand.nr ? ' aktiv' : ''}" data-nr="${k.nummer}">
-      <div class="bild"><img alt="">${kommentarMarke(k)}</div>
-      <div class="text"><b>${String(k.nummer).padStart(3, '0')} ${esc(k.name || 'ohne Name')}</b>
-      <span>${k.entwurf ? '<em>Entwurf</em> · ' : ''}v${k.version}${k.besitz ? ` · ${k.besitz}×` : ''}</span></div>
-    </div>`).join('') || '<p class="hinweis">Noch keine Karten.</p>';
-  const auftraege = [];
-  $('#karten').querySelectorAll('.kachel[data-nr]').forEach((k) => {
-    const nr = Number(k.dataset.nr);
-    k.onclick = () => waehleKarte(nr);
-    auftraege.push({ ordner, nr, img: k.querySelector('img') });
-  });
+  $('#karten').innerHTML = (karten.map((k) => kachelHtml(k, true)).join('') + entwurfKachel(true)) || '<p class="hinweis">Noch keine Karten.</p>';
+  const auftraege = verbindeKacheln($('#karten'), ordner);
   // Die aktive Karte sichtbar halten
   $('#karten').querySelector('.aktiv')?.scrollIntoView({ block: 'nearest' });
   ladeVorschauBilder(auftraege);
 }
 
+// aktion: { text, fn } oder eine Liste davon
 function meldungAktiv(art, text, punkte, aktion) {
   if (!$('#uebersicht').hidden) {
     const m = $('#meldungUebersicht');
     m.hidden = false;
     m.className = `meldung ${art}`;
     m.innerHTML = esc(text) + (punkte && punkte.length ? `<ul>${punkte.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : '');
-    if (aktion) {
-      const a = document.createElement('a');
-      a.textContent = ` ${aktion.text}`;
-      a.onclick = aktion.fn;
-      m.append(a);
+    for (const a of [aktion || []].flat()) {
+      const link = document.createElement('a');
+      link.textContent = ` ${a.text}`;
+      link.onclick = a.fn;
+      m.append(link);
     }
   } else meldung(art, text, punkte, aktion);
+}
+
+function keineMeldungAktiv() {
+  $('#meldungUebersicht').hidden = true;
+  keineMeldung();
 }
 
 $('#btnSchliessen').onclick = zeigeStart;
@@ -254,12 +306,66 @@ $('#btnOrdner').onclick = () => rufe('ordner:zeigen', zustand.info.set.ordner);
 $('#btnNeueKarte').onclick = () => neueKarte();
 $('#btnNeueKarteUebersicht').onclick = () => neueKarte();
 
-$('#btnAlleRendern').onclick = async () => {
+// Karten, deren PNG nach dem Umsortieren oder Löschen veraltet ist (set.json, png_veraltet)
+const veraltet = () => zustand.info.set.png_veraltet || [];
+
+function zeigePngStand() {
+  const n = veraltet().length;
+  $('#btnAlleRendern').textContent = n ? `Alle als PNG (${n} veraltet)` : 'Alle als PNG';
+  $('#btnAlleRendern').classList.toggle('hinweisknopf', n > 0);
+  $('#btnAlleRendern').title = n ? `Neue Nummern ohne aktuelles PNG: ${veraltet().map(nr3).join(', ')}` : '';
+}
+
+async function rendere(nr) {
   try {
-    const r = await mitWarten(() => rufe('export:png', zustand.info.set.ordner, {}));
-    meldungAktiv('ok', `${r.length} Karten als PNG gespeichert.`, [], { text: 'Ordner zeigen', fn: () => rufe('ordner:zeigen', `${zustand.info.set.ordner}/export/png`) });
+    const r = await mitWarten(() => rufe('export:png', zustand.info.set.ordner, nr ? { nr } : {}));
+    zustand.info = await rufe('set:oeffnen', zustand.info.set.ordner);
+    zeigePngStand();
+    meldungAktiv('ok', `${r.length} ${r.length === 1 ? 'Karte' : 'Karten'} als PNG gespeichert.`, [], { text: 'Ordner zeigen', fn: () => rufe('ordner:zeigen', `${zustand.info.set.ordner}/export/png`) });
   } catch (e) { meldungAktiv('fehler', e.message, e.offene_punkte); }
-};
+}
+
+$('#btnAlleRendern').onclick = () => rendere();
+
+// Nach dem Umsortieren oder Löschen: Set neu laden, die offene Karte unter ihrer neuen Nummer weiterführen,
+// Ansicht auffrischen und fragen, ob die PNGs jetzt neu erzeugt werden sollen ("Später" geht auch).
+async function nachUmbau(text, umnummeriert, geloescht) {
+  const ordner = zustand.info.set.ordner;
+  zustand.info = await rufe('set:oeffnen', ordner);
+  zeigePngStand();
+  const neu = new Map(umnummeriert.map((u) => [u.alt, u.neu]));
+  if (zustand.nr && zustand.nr === geloescht) { zustand.nr = null; zustand.karte = null; }
+  if (zustand.nr && neu.has(zustand.nr)) {
+    zustand.nr = neu.get(zustand.nr);
+    // Formular bleibt, wie es ist (ungespeicherte Änderungen gehen nicht verloren), nur Kopf und Vorschau ziehen mit
+    zeigeKopf(await rufe('karte:laden', ordner, zustand.nr), zustand.karte.version);
+    aktualisiereVorschau();
+  }
+  if (!$('#arbeit').hidden && zustand.karte) await ladeListe();
+  else await zeigeUebersicht();
+  const punkte = umnummeriert.map((u) => `${nr3(u.alt)} → ${nr3(u.neu)} ${u.name || ''} (jetzt Version ${u.version})`);
+  if (!veraltet().length) return meldungAktiv('ok', text, punkte);
+  meldungAktiv('ok', `${text} ${umnummeriert.length ? `${umnummeriert.length} ${umnummeriert.length === 1 ? 'Karte hat' : 'Karten haben'} eine neue Nummer und eine neue Version bekommen. ` : ''}`
+    + `${veraltet().length} ${veraltet().length === 1 ? 'Karte braucht' : 'Karten brauchen'} ein neues PNG. Jetzt neu als PNG speichern?`, punkte, [
+    { text: 'Ja, jetzt neu als PNG speichern', fn: () => rendere(veraltet().join(',')) },
+    { text: 'Später (erst weiter bearbeiten)', fn: keineMeldungAktiv },
+  ]);
+}
+
+async function verschiebeKarte(von, ziel) {
+  try {
+    const r = await rufe('karte:verschieben', zustand.info.set.ordner, von, ziel);
+    await nachUmbau(`Karte ${nr3(von)} steht jetzt an Stelle ${nr3(ziel)}.`, r);
+  } catch (e) { meldungAktiv('fehler', e.message, e.offene_punkte); }
+}
+
+async function loescheKarte(nr, titel) {
+  if (!confirm(`Karte ${titel || nr3(nr)} löschen?\n\nSie kommt mit allen Versionen in den Ordner „papierkorb“ des Sets und lässt sich dort von Hand zurückholen. Die Karten danach rücken eine Nummer auf und bekommen dabei je eine neue Version.`)) return;
+  try {
+    const r = await rufe('karte:loeschen', zustand.info.set.ordner, nr);
+    await nachUmbau(`Karte ${titel || nr3(nr)} gelöscht (liegt im Papierkorb des Sets).`, r.umnummeriert, nr);
+  } catch (e) { meldungAktiv('fehler', e.message, e.offene_punkte); }
+}
 
 $('#btnDruck').onclick = () => $('#dlgDruck').showModal();
 $('#dlgDruck').onclose = async () => {
@@ -356,17 +462,25 @@ function layoutsDesSets() {
   return Object.entries(layouts).filter(([, l]) => l.kartentyp === zustand.info.set.kartentyp);
 }
 
-function neueKarte() {
+// Steht der Editor gerade auf der neuen, ungespeicherten Karte, wird ihr Stand gemerkt (zustand.entwurf)
+function merkeEntwurf() {
+  if (zustand.info && zustand.nr === null && zustand.karte && !$('#arbeit').hidden) zustand.entwurf = leseFormular();
+}
+
+// Öffnet die neue Karte. Gibt es schon eine ungespeicherte, geht es mit ihr weiter. verwerfen: leer neu anfangen
+function neueKarte({ verwerfen = false } = {}) {
+  if (verwerfen) zustand.entwurf = null;
+  else merkeEntwurf();
+  const weiter = !!zustand.entwurf;
   zustand.nr = null;
   const layout = layoutsDesSets()[0][0];
-  zustand.karte = { layout, bildquelle: 'foto', bild: { skalierung: 1, x: 0, y: 0 }, attacken: [{}] };
+  zustand.karte = zustand.entwurf || { layout, bildquelle: 'foto', bild: { skalierung: 1, x: 0, y: 0 }, attacken: [{}] };
+  zustand.entwurf = zustand.karte;
   $('#editorTitel').textContent = 'Neue Karte';
   $('#version').hidden = true;
-  $('#btnPng').hidden = true;
-  $('#btnStil').hidden = true;
-  $('#btnKopieren').hidden = true;
-  $('#besitzFeld').hidden = true;
+  for (const id of ['#btnPng', '#btnStil', '#btnKopieren', '#btnLoeschen', '#besitzFeld']) $(id).hidden = true;
   keineMeldung();
+  if (weiter) meldung('ok', 'Hier geht es mit deiner neuen Karte weiter, sie ist noch nicht gespeichert.', [], { text: 'Verwerfen und leer anfangen', fn: () => neueKarte({ verwerfen: true }) });
   zeigeEditor();
   baueFormular();
   ladeListe();
@@ -374,22 +488,26 @@ function neueKarte() {
   $('#editor').scrollTop = 0;
 }
 
+// Titel, Versionsauswahl, Knöpfe und Besitz für eine gespeicherte Karte (r = Antwort von karte:laden)
+function zeigeKopf(r, version) {
+  const aktuell = r.versionen[r.versionen.length - 1];
+  const kopie = r.karte.kopiert_von ? ` (Kopie von ${nr3(r.karte.kopiert_von.nummer)})` : '';
+  $('#editorTitel').textContent = `Karte ${nr3(zustand.nr)}${kopie}`;
+  $('#version').hidden = false;
+  $('#version').innerHTML = r.versionen.slice().reverse().map((v) => `<option value="${v}" ${v === version ? 'selected' : ''}>Version ${v}${v === aktuell ? ' (aktuell)' : ''}</option>`).join('');
+  for (const id of ['#btnPng', '#btnStil', '#btnKopieren', '#btnLoeschen', '#besitzFeld']) $(id).hidden = false;
+  $('#besitz').value = r.sammlung.besitz || 0;
+}
+
 async function waehleKarte(nr, version) {
   try {
+    merkeEntwurf();
     const r = await rufe('karte:laden', zustand.info.set.ordner, nr, version);
     const andereKarte = nr !== zustand.nr;
     zustand.nr = nr;
     zustand.karte = r.karte;
     const aktuell = r.versionen[r.versionen.length - 1];
-    const kopie = r.karte.kopiert_von ? ` (Kopie von ${String(r.karte.kopiert_von.nummer).padStart(3, '0')})` : '';
-    $('#editorTitel').textContent = `Karte ${String(nr).padStart(3, '0')}${kopie}`;
-    $('#version').hidden = false;
-    $('#version').innerHTML = r.versionen.slice().reverse().map((v) => `<option value="${v}" ${v === r.karte.version ? 'selected' : ''}>Version ${v}${v === aktuell ? ' (aktuell)' : ''}</option>`).join('');
-    $('#btnPng').hidden = false;
-    $('#btnStil').hidden = false;
-    $('#btnKopieren').hidden = false;
-    $('#besitzFeld').hidden = false;
-    $('#besitz').value = r.sammlung.besitz || 0;
+    zeigeKopf(r, r.karte.version);
     keineMeldung();
     zeigeEditor();
     if (r.karte.version !== aktuell) meldung('ok', `Du siehst Version ${r.karte.version}. Speichern legt daraus eine neue Version an.`);
@@ -415,6 +533,8 @@ $('#btnPng').onclick = async () => {
     meldung('ok', `Gespeichert: ${r.png}`, [], { text: 'Datei zeigen', fn: () => rufe('datei:zeigen', r.png) });
   } catch (e) { fehler(e); }
 };
+
+$('#btnLoeschen').onclick = () => loescheKarte(zustand.nr, `${nr3(zustand.nr)} „${zustand.karte.name || 'ohne Name'}“`);
 
 // Kopiert die angezeigte (gespeicherte) Version als neue Karte und öffnet die Kopie
 $('#btnKopieren').onclick = async () => {
@@ -470,6 +590,8 @@ $('#btnSpeichern').onclick = async () => {
     const k = zustand.nr
       ? await rufe('karte:aendern', zustand.info.set.ordner, zustand.nr, daten)
       : await rufe('karte:neu', zustand.info.set.ordner, daten);
+    // Die neue Karte ist jetzt gespeichert, ihre Kachel "nicht gespeichert" fällt weg
+    if (!zustand.nr) { zustand.entwurf = null; zustand.karte = null; }
     await waehleKarte(k.nummer);
     if (k.entwurf) meldung('fehler', `Als Entwurf gespeichert (Version ${k.version}). Es fehlen noch:`, k.offene_punkte || []);
     else meldung('ok', `Gespeichert als Version ${k.version}.`);
@@ -571,7 +693,15 @@ function baueFormular() {
     if (k.layout === 'gold') teile.push(`<label class="zeile ganz"><input type="checkbox" data-feld="goldton" ${k.goldton !== false ? 'checked' : ''}> Foto in Gold einfärben</label>`);
     teile.push(feld('stufe', 'Stufe', { hinweis: 'z. B. Basis, Phase 1' }), feld('entwickelt_aus', 'Entwickelt sich aus'),
       feld('kp', 'KP', { typ: 'number' }), auswahl('typ', 'Typ', typen, { leer: true }));
-    if (['normal', 'regenbogen-normal'].includes(k.layout)) teile.push(feld('band', 'Band unter dem Foto', { ganz: true }));
+    if (['normal', 'regenbogen-normal'].includes(k.layout)) {
+      // Die Nummer setzt die App selbst. Stand sie früher von Hand vorne in Text 1, fällt sie dort weg.
+      if (k.band) k.band = String(k.band).replace(/^s*Nr.?s*d+s*(·s*)?/i, '');
+      const nr = zustand.nr ? `Nr. ${nr3(zustand.nr)}` : 'Nr. (Nummer der Karte)';
+      teile.push(`<fieldset><legend>Band unter dem Foto</legend>
+        <p class="hinweis ganz">Das Band zeigt „${nr} · Text 1 · Text 2“. Die Nummer setzt die App und passt sie beim Umsortieren an.</p>
+        ${feld('band', 'Text 1')}${feld('band2', 'Text 2')}
+      </fieldset>`);
+    }
     const atk = k.attacken && k.attacken.length ? k.attacken : [{}];
     [0, 1].forEach((i) => {
       const a = atk[i] || {};
@@ -611,6 +741,11 @@ function baueFormular() {
   form.onclick = (e) => { const knopf = e.target.closest('[data-kosten]'); if (knopf) aendereKosten(knopf); };
   form.oninput = (e) => {
     if (e.target.dataset.bild !== undefined) return zeigeBildausschnitt();
+    // Name der ungespeicherten neuen Karte gleich in ihrer Kachel zeigen
+    if (zustand.nr === null && e.target.dataset.feld === 'name') {
+      const b = $('#karten [data-neu] b');
+      if (b) b.textContent = e.target.value || 'Neue Karte';
+    }
     clearTimeout(zustand.timer);
     zustand.timer = setTimeout(aktualisiereVorschau, 150);
   };
@@ -779,5 +914,12 @@ verbindeDrop($('#editor'));
 // Dateien, die daneben fallen, sollen die App nicht verlassen
 document.addEventListener('dragover', (e) => e.preventDefault());
 document.addEventListener('drop', (e) => e.preventDefault());
+
+// Hintergrund der Bearbeitung (Menü Ansicht → Hintergrund der Bearbeitung), gilt für Formular und Vorschau
+function setzeEinstellungen(werte) {
+  for (const hg of ['hell', 'mittel', 'dunkel']) $('#arbeit').classList.toggle(`hg-${hg}`, werte.hintergrund === hg);
+}
+rufe('einstellungen').then(setzeEinstellungen).catch(() => {});
+window.cc.beiEinstellungen(setzeEinstellungen);
 
 zeigeStart();

@@ -87,7 +87,7 @@ aside .werkzeugleiste { top: -12px; margin: -12px -12px 0; padding: 12px; backgr
 .kopfzeile select { width: auto; }
 #formKarte { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
 #formKarte .ganz { grid-column: 1 / -1; }
-fieldset { grid-column: 1 / -1; border: 1px solid var(--linie); border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 0; background: rgba(19, 29, 51, .6); }
+fieldset { grid-column: 1 / -1; border: 1px solid var(--linie); border-radius: 8px; padding: 10px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin: 0; background: var(--feldsatz, rgba(19, 29, 51, .6)); }
 .kostenfeld { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 12px; color: var(--leise); }
 .kostentypen { display: flex; flex-wrap: wrap; gap: 6px; }
 /* Knöpfe in der Farbe des Typs (--typfarbe, --typtext aus den Set-Typen), gewählte Typen mit weißem Ring */
@@ -155,6 +155,7 @@ dialog .aktionen { justify-content: flex-end; margin-top: 8px; }
 .meldung.ok { background: rgba(79, 209, 139, .12); color: var(--ok); border: 1px solid rgba(79, 209, 139, .35); }
 .meldung ul { margin: 6px 0 0; padding-left: 18px; }
 .meldung a { color: inherit; cursor: pointer; text-decoration: underline; }
+.meldung a + a { margin-left: 16px; }
 
 /* Format-Auswahl */
 .formatfeld { grid-column: 1 / -1; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px 12px; border: 0; padding: 0; margin: 0; background: none; }
@@ -181,3 +182,27 @@ table.typen .entfernen { padding: 2px 8px; }
 .auswahlliste label { padding: 3px 0; color: var(--text); font-weight: 400; font-size: 13px; }
 .grid .bild .kommentar { position: absolute; left: 6px; bottom: 6px; z-index: 1; background: rgba(19, 29, 51, .9); border-radius: 999px; padding: 1px 6px; font-size: 13px; box-shadow: 0 1px 3px rgba(0, 0, 0, .5); }
 .grid .kachel.aktiv { outline: 3px solid var(--gold); outline-offset: -1px; box-shadow: 0 0 14px rgba(244, 194, 95, .35); }
+
+/* Karten umsortieren (Drag & Drop) und ungespeicherte neue Karte */
+.grid .kachel.ziehen { opacity: .4; }
+.grid .kachel.ablage { outline: 3px dashed var(--akzent); outline-offset: 2px; }
+.grid .kachel.neu { border-style: dashed; border-color: var(--orange); }
+.grid .kachel.neu .plus { font-size: 34px; color: var(--orange); }
+button.hinweisknopf { border-color: var(--orange); color: var(--gold); }
+
+/* Hintergrund der Bearbeitung (Menü Ansicht): Formular und Vorschau in Hell- oder Mittelgrau statt im Blau der Kopfzeile */
+#arbeit.hg-hell #editor, #arbeit.hg-hell #vorschau,
+#arbeit.hg-mittel #editor, #arbeit.hg-mittel #vorschau {
+  --grund: #ffffff; --flaeche2: #f3f4f6; --linie: #a9afb9; --text: #1d2433; --leise: #4a5363;
+  --akzent: #0a7ea6; --fehler: #b3261e; --ok: #1e7a46; --feldsatz: rgba(255, 255, 255, .45);
+  color-scheme: light; color: var(--text);
+}
+#arbeit.hg-hell #editor, #arbeit.hg-hell #vorschau { --flaeche: #e4e6ea; --hg: #d9dce1; --hg-vorschau: radial-gradient(ellipse at 50% 35%, #eceef1, #c6cad1 75%); }
+#arbeit.hg-mittel #editor, #arbeit.hg-mittel #vorschau { --flaeche: #b9bec6; --hg: #adb2ba; --hg-vorschau: radial-gradient(ellipse at 50% 35%, #c4c8ce, #969ba4 75%); }
+#arbeit.hg-hell #editor, #arbeit.hg-mittel #editor { background: var(--hg); }
+#arbeit.hg-hell #vorschau, #arbeit.hg-mittel #vorschau { background: var(--hg-vorschau); }
+#arbeit.hg-hell #editor button:not(.primaer):hover, #arbeit.hg-mittel #editor button:not(.primaer):hover { background: #dfe7f1; }
+#arbeit.hg-hell #editor .kostentyp button, #arbeit.hg-mittel #editor .kostentyp button { background: rgba(0, 0, 0, .25); }
+#arbeit.hg-hell input::placeholder, #arbeit.hg-hell textarea::placeholder, #arbeit.hg-mittel input::placeholder, #arbeit.hg-mittel textarea::placeholder { color: #8a92a0; }
+.aktionen button { white-space: nowrap; }
+#editor .leiste { flex-wrap: wrap; }

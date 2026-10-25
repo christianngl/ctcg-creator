@@ -1,10 +1,10 @@
 ---
 titel: Ein paar Änderungen
-status: offen
+status: erledigt
 erstellt: 2026-10-24
 uhrzeit: 12:29
 issue: 15
-abgeglichen: offen
+abgeglichen: erledigt
 ---
 
 1. Karten sollte man auch löschen können, Karte neu sortieren in der Vorschau zB per Drag and Drop, dabei sollte darauf geachtet werden dass die fortlaufenden Kartennummern auf allen Karten angepasst werden. Bem verschieben und beim löschen. Die Änderungen auf allen Karten sollte danach angekündigt werden, dass alle bereits erstellten Karten eine neue Versionsnummer haben und neu als png angelegt werden müssen. Erst nachdem alle Bearbeitungen abgeschlossen sind. 

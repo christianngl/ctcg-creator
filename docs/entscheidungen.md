@@ -37,6 +37,10 @@
 
 - **Kartenformat pro Karte** (Höhe × Breite), das Set hat nur noch ein Standardformat. Die Vorlage skaliert die Breite und gibt zusätzliche Höhe dem Fotofenster. So passt ein Layout für TCG, Skat, Tarot und kleine Formate. Sehr breite Formate lehnt die Vorlage ab. Druckbögen trennen Karten nach Format, Einzelseiten haben die Größe der jeweiligen Karte.
 - **Typen pro Set** sind in der App bearbeitbar (Name, Symbol, Farbe, Hintergrundverlauf). Entfernte Typen, die Karten noch nutzen, meldet die App als Warnung, statt die Karten zu ändern.
+- **Umsortieren und Löschen** (Issue #15): Kartennummern bleiben fortlaufend. Eine Karte mit neuer Nummer zieht samt Versionen in den neuen Ordner und bekommt eine neue Version, Sammlung und Titelkarte ziehen mit. Alte PNGs dieser Karten wandern nach `export/png/veraltet/`, die Karten stehen in `set.json` unter `png_veraltet`, bis sie neu gerendert sind. Die App fragt danach, ob sie die PNGs gleich neu erzeugen soll, „Später“ ist möglich, der Knopf „Alle als PNG“ zeigt dann die Zahl der veralteten. Gelöscht wird in den Ordner `papierkorb/` des Sets statt endgültig.
+- **Band mit Nummer:** Das Band unter dem Fotofenster setzt die Nummer selbst („Nr. 007 · Text 1 · Text 2“), damit sie nach dem Umsortieren stimmt. Eine früher von Hand vorne eingetragene Nummer wird nicht doppelt gezeigt.
+- **Ungespeicherte neue Karte** bleibt als Kachel „nicht gespeichert“ in der Seitenleiste, solange das Set offen ist. Gespeichert wird sie erst mit „Speichern“, damit keine leeren Karten entstehen.
+- **Hintergrund der Bearbeitung** (Menü Ansicht): Hellgrau (Standard), Mittelgrau oder das bisherige Dunkelblau, gespeichert in `%APPDATA%/card-creator/einstellungen.json`.
 - **Startseite und Kartenübersicht als Grid** mit Vorschaubildern. Die Bilder werden im Hintergrund gerendert und pro Set in `.vorschau/` zwischengespeichert. Die Liste der Sets enthält alle bekannten Sets. „✕“ nimmt ein Set nur aus der Liste, der Ordner bleibt.
 - **Titelkarte** pro Set für die Startseite, ohne Auswahl zeigt die Kachel das Kürzel.
 

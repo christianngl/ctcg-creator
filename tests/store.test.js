@@ -257,7 +257,7 @@ test('Regenbogenkarte mit Fotofenster oben: Band und Glanz über Foto und Karten
   const html = karteSeite(store.ladeSet(ordner), k);
   assert.match(html, /class="card normal regenbogenkarte/);
   assert.match(html, /class="win"/);
-  assert.match(html, /class="ribbon"[^>]*>Kurzinfo/);
+  assert.match(html, /class="ribbon"[^>]*>Nr. 001 · Kurzinfo</);
   assert.equal((html.match(/class="regenbogenglanz"/g) || []).length, 2);
   // Stil übertragen geht zwischen allen Spielkarten mit Foto
   store.neueKarte(ordner, spielkarte(bild, { layout: 'vollbild' }));
@@ -292,4 +292,67 @@ test('Effekt Strahlen gibt es nicht mehr, alte Karten verlieren ihn beim Speiche
   const neu = store.aendereKarte(ordner, 1, { kp: 70 });
   assert.equal(neu.folie, undefined);
   assert.equal(neu.entwurf, undefined);
+});
+
+test('Band unter dem Foto: immer "Nr. xxx · Text 1 · Text 2", von Hand eingetragene Nummer nicht doppelt', () => {
+  const { ordner, bild } = neuesSet();
+  const band = (extra) => karteSeite(store.ladeSet(ordner), store.neueKarte(ordner, spielkarte(bild, extra))).match(/class="ribbon"[^>]*>([^<]*)</)[1];
+  assert.equal(band({}), 'Nr. 001');
+  assert.equal(band({ band: 'Wildhunt', band2: '2026' }), 'Nr. 002 · Wildhunt · 2026');
+  assert.equal(band({ band: 'Nr. 017 · Wildhunt' }), 'Nr. 003 · Wildhunt');
+  assert.equal(band({ band2: 'nur Text 2' }), 'Nr. 004 · nur Text 2');
+  const voll = karteSeite(store.ladeSet(ordner), store.neueKarte(ordner, spielkarte(bild, { layout: 'vollbild', band: 'x' })));
+  assert.doesNotMatch(voll, /class="ribbon"/);
+});
+
+// Set mit Karten A, B, C, D (Nummern 1–4), Karte 2 hat Besitz und ist Titelkarte, Karte 3 hat ein PNG
+function setMitVierKarten() {
+  const s = neuesSet();
+  for (const name of ['A', 'B', 'C', 'D']) store.neueKarte(s.ordner, spielkarte(s.bild, { name }));
+  store.setzeBesitz(s.ordner, 2, 5);
+  store.aendereSet(s.ordner, { titelkarte: 2 });
+  fs.writeFileSync(path.join(s.ordner, 'export', 'png', 'TS1-003_v1.png'), 'png');
+  return s;
+}
+const namen = (ordner) => store.listeKarten(ordner).map((k) => `${k.nummer}${k.name}`).join(' ');
+
+test('Karte verschieben: Nummern fortlaufend, neue Version, Sammlung und Titelkarte ziehen mit', () => {
+  const { ordner } = setMitVierKarten();
+  const r = store.verschiebeKarte(ordner, 4, 2);
+  assert.equal(namen(ordner), '1A 2D 3B 4C');
+  assert.deepEqual(r.map((x) => [x.alt, x.neu, x.version]), [[4, 2, 2], [2, 3, 2], [3, 4, 2]]);
+  assert.equal(store.ladeKarte(ordner, 2).nummer, 2);
+  assert.deepEqual(store.ladeKarte(ordner, 2).umnummeriert.von, 4);
+  // Version 1 bleibt abrufbar
+  assert.equal(store.ladeKarte(ordner, 2, 1).name, 'D');
+  assert.equal(store.ladeSammlung(ordner)[3].besitz, 5);
+  const set = store.ladeSet(ordner);
+  assert.equal(set.titelkarte, 3);
+  assert.deepEqual(set.png_veraltet, [2, 3, 4]);
+  // Das alte PNG von Karte 3 (jetzt 4) liegt nicht mehr unter falscher Nummer in export/png
+  assert.ok(fs.existsSync(path.join(ordner, 'export', 'png', 'veraltet', 'TS1-003_v1.png')));
+  assert.ok(!fs.existsSync(path.join(ordner, 'export', 'png', 'TS1-003_v1.png')));
+  // Nach dem Rendern ist die Karte nicht mehr veraltet
+  store.pngErneuert(ordner, [2, 4]);
+  assert.deepEqual(store.ladeSet(ordner).png_veraltet, [3]);
+  // Nach hinten verschieben
+  store.verschiebeKarte(ordner, 1, 4);
+  assert.equal(namen(ordner), '1D 2B 3C 4A');
+  assert.throws(() => store.verschiebeKarte(ordner, 9, 1), { code: 'karte_fehlt' });
+});
+
+test('Karte löschen: in den Papierkorb des Sets, folgende Karten rücken auf', () => {
+  const { ordner } = setMitVierKarten();
+  const r = store.loescheKarte(ordner, 2);
+  assert.equal(namen(ordner), '1A 2C 3D');
+  assert.ok(fs.existsSync(path.join(r.geloescht.papierkorb, 'v001.json')));
+  assert.equal(JSON.parse(fs.readFileSync(path.join(r.geloescht.papierkorb, 'sammlung.json'), 'utf8')).besitz, 5);
+  assert.deepEqual(r.umnummeriert.map((x) => [x.alt, x.neu]), [[3, 2], [4, 3]]);
+  assert.equal(store.ladeSammlung(ordner)[2], undefined);
+  const set = store.ladeSet(ordner);
+  assert.equal(set.titelkarte, null);
+  assert.deepEqual(set.png_veraltet, [2, 3]);
+  // Die letzte Karte löschen ändert keine Nummern
+  assert.deepEqual(store.loescheKarte(ordner, 3).umnummeriert, []);
+  assert.equal(namen(ordner), '1A 2C');
 });

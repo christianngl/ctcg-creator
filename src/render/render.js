@@ -95,6 +95,7 @@ async function rendereKarten(ordner, { nr, beschnitt = true } = {}) {
       fs.writeFileSync(datei, bild.toPNG());
       ergebnis.push({ nummer: n, version: karte.version, name: karte.name, png: datei });
     }
+    store.pngErneuert(set.ordner, ergebnis.map((e) => e.nummer));
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
   }

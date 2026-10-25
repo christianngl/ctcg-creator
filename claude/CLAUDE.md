@@ -102,6 +102,8 @@ node src/cli/index.js karte neu --set <pfad> --json <json|datei> [--entwurf]
 node src/cli/index.js karte aendern --set <pfad> --nr 7 --json '{"kp":70}' [--entwurf]
 node src/cli/index.js karte zeigen|versionen --set <pfad> --nr 7 [--version 1]
 node src/cli/index.js karte kopieren --set <pfad> --nr 7 [--version 1] [--neue-nr 15]   als neue Karte kopieren, z. B. als Goldvariante
+node src/cli/index.js karte verschieben --set <pfad> --nr 9 --nach 3   Karte an Stelle 3 setzen, die anderen rücken auf (neue Nummer = neue Version)
+node src/cli/index.js karte loeschen --set <pfad> --nr 7 --ja         nur nach ausdrücklicher Bestätigung, Karte kommt nach papierkorb/, die folgenden rücken auf
 node src/cli/index.js karte stil --set <pfad> --von 3 --nr 4-10      Stil (Layout derselben Art, Effekt, Format, Holo, Goldton) übertragen, je Karte neue Version
 node src/cli/index.js rendern --set <pfad> [--nr 1-12] [--ohne-beschnitt]
 node src/cli/index.js druck --set <pfad> [--nr …] [--modus bogen|einzeln] [--ohne-rueckseiten] [--auflage 2] [--mit-entwuerfen]
@@ -129,6 +131,7 @@ Unter Windows mit der Bash von Claude Code Pfade mit Laufwerksbuchstaben und `/`
 | `rueckseite` | Bildpfad | nein | gemeinsame Rückseite, wird ins Set kopiert |
 | `typen` | Liste `{name, symbol, farbe, hintergrund: [farbe1, farbe2], textfarbe?}` | nein | Standard: 13 Typen der Vorlage, in der App unter Set-Einstellungen bearbeitbar. Nach einer Änderung meldet `set aendern` unter `warnungen` Karten mit Typen, die es nicht mehr gibt |
 | `seltenheiten` | Liste `{name, symbol, glanz?}` | nein | Standard: häufig ●, selten ◆, holo ★ |
+| `png_veraltet` | Liste von Kartennummern | nein | setzt die App: Karten, die beim Umsortieren oder Löschen eine neue Nummer bekommen haben und noch kein neues PNG haben. `rendern` nimmt sie wieder heraus |
 
 **Karte** (Felder der Vorlage `tcg`, vollständig mit `vorlage zeigen tcg`)
 
@@ -144,12 +147,13 @@ Unter Windows mit der Bash von Claude Code Pfade mit Laufwerksbuchstaben und `/`
 | `nummer` | alle | nein | ohne Angabe die nächste freie Nummer |
 | `format` | alle | nein | `{hoehe, breite}` in mm, sonst Standardformat des Sets. Vorschläge: `vorlage zeigen tcg` |
 | `stufe`, `kp`, `typ`, `attacken` | normal, vollbild, gold, regenbogen, regenbogen-normal | ja | `attacken`: 1–2 × `{kosten: [Typ, …], name, schaden, text}` |
-| `entwickelt_aus`, `schwaeche`, `resistenz`, `rueckzug`, `flavor` | normal, vollbild, gold, regenbogen, regenbogen-normal | nein | `band` nur bei normal und regenbogen-normal, `goldton` (Standard `true`) nur bei gold |
+| `entwickelt_aus`, `schwaeche`, `resistenz`, `rueckzug`, `flavor` | normal, vollbild, gold, regenbogen, regenbogen-normal | nein | `band` (Text 1) und `band2` (Text 2) nur bei normal und regenbogen-normal: das Band zeigt immer „Nr. 007 · Text 1 · Text 2“, die Nummer setzt die App, `goldton` (Standard `true`) nur bei gold |
 | `effekt` | trainer | ja | dazu optional `untertyp`, `regel`, `flavor` |
 | `typ`, `energien` | energie | `typ` ja | Energiekarte als Vollbild: `typ` bestimmt Symbol und Farbe, `energien` (1–5, Standard 1) wie viele Energie-Symbole die Karte zeigt, dazu optional `flavor` |
 | `beschreibung`, `typ` | sammel, sammel-regenbogen | nein | |
 | `kommentar` | alle | nein | Notiz für spätere Bearbeitungen und Ideen, erscheint nicht auf der Karte |
 | `kopiert_von` | alle | nein | `{nummer, version}`, setzt `karte kopieren` |
+| `umnummeriert` | alle | nein | `{von, am}`, setzen Verschieben und Löschen, wenn die Karte dabei eine neue Nummer bekommt |
 
 **Entwürfe:** Die App speichert immer, auch wenn Angaben fehlen. Die Karte bekommt dann `entwurf: true` und `offene_punkte`. Drucken lassen sich Entwürfe nur mit ausdrücklicher Zustimmung (`--mit-entwuerfen` bzw. Häkchen im Druckdialog). Die Kommandozeile speichert Entwürfe nur mit `--entwurf`.
 
@@ -166,6 +170,8 @@ Alles landet im Set-Ordner:
 ├─ bilder/                               Fotos und KI-Bilder (beim Anlegen hierher kopiert)
 ├─ .vorschau/                            kleine Vorschaubilder und Arbeitskopien großer Fotos (Zwischenspeicher)
 ├─ export/png/SE1-007_v2.png             300 dpi, mit Beschnitt (oder _ohne-beschnitt)
+├─ export/png/veraltet/                  PNGs von Karten, die beim Umsortieren eine neue Nummer bekommen haben
+├─ papierkorb/<zeit>_007_<name>/         gelöschte Karten samt Versionen, PNGs und Sammlungseintrag (von Hand zurückholbar)
 └─ export/druck/SE1_<datum>_bogen.pdf    A4-Bögen mit Schnittmarken und gespiegelten Rückseiten, je Format eigene Bögen,
                                          oder _einzeln.pdf: eine Karte pro Seite in Kartengröße samt Beschnitt, Rückseite dahinter
 ```

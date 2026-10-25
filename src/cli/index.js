@@ -26,6 +26,10 @@ const HILFE = `cTCG Creator – Kommandozeile (Ausgabe immer JSON)
   karte kopieren --set <pfad> --nr <n> [--version <v>] [--neue-nr <n>]   Karte als neue Karte kopieren (z. B. als Goldvariante)
   karte stil --set <pfad> --von <n> --nr 4-10   überträgt den Stil (Layout derselben Art, Effekt, Format, Holo, Goldton),
                                               jede geänderte Karte bekommt eine neue Version
+  karte verschieben --set <pfad> --nr <n> --nach <n>   setzt die Karte an die Stelle von Karte --nach, die anderen rücken auf;
+                                              jede Karte mit neuer Nummer bekommt eine neue Version und muss neu gerendert werden
+  karte loeschen --set <pfad> --nr <n> --ja    nur nach ausdrücklicher Bestätigung des Nutzers: Karte kommt nach <set>/papierkorb/,
+                                              die folgenden Karten rücken auf (neue Nummer, neue Version)
   rendern --set <pfad> [--nr 7|1-12|1,3,5] [--ohne-beschnitt]      PNG nach <set>/export/png/
   druck --set <pfad> [--nr …] [--modus bogen|einzeln] [--ohne-rueckseiten] [--auflage <n>] [--mit-entwuerfen]
                                               PDF nach <set>/export/druck/, vermerkt den Druck in der Sammlung
@@ -54,7 +58,8 @@ function ausgabe(daten, code = 0) {
 }
 
 function fehlerAusgabe(e) {
-  const code = e.code === 'pflichtfelder_fehlen' ? 2 : 1;
+  // Auch eine fehlende Bestätigung (z. B. vor dem Löschen) muss beim Nutzer nachgefragt werden
+  const code = ['pflichtfelder_fehlen', 'bestaetigung_fehlt'].includes(e.code) ? 2 : 1;
   ausgabe({ ok: false, fehler: e.message, code: e.code || 'fehler', offene_punkte: e.offene_punkte || [] }, code);
 }
 
@@ -104,7 +109,7 @@ function electronAuftrag(auftrag) {
 async function main(argv) {
   const { pos, opt } = parse(argv);
   const [befehl, unter] = pos;
-  const bef = (unter && ['set', 'karte', 'vorlage'].includes(befehl)) ? `${befehl} ${unter.replace('ä', 'ae')}` : befehl;
+  const bef = (unter && ['set', 'karte', 'vorlage'].includes(befehl)) ? `${befehl} ${unter.replace('ä', 'ae').replace('ö', 'oe')}` : befehl;
 
   switch (bef) {
     case undefined:
@@ -157,6 +162,17 @@ async function main(argv) {
       const ordner = path.resolve(opt.set);
       const karten = store.uebertrageStil(ordner, zahl(opt.von, 'von'), store.waehleNummern(ordner, opt.nr));
       return ausgabe({ ok: true, von: zahl(opt.von, 'von'), karten });
+    }
+    case 'karte verschieben': {
+      brauche(opt, 'set', 'nr', 'nach');
+      const umnummeriert = store.verschiebeKarte(opt.set, zahl(opt.nr, 'nr'), zahl(opt.nach, 'nach'));
+      return ausgabe({ ok: true, umnummeriert, png_veraltet: store.ladeSet(opt.set).png_veraltet || [], hinweis: 'Karten mit neuer Nummer mit "rendern --nr" neu als PNG erzeugen.' });
+    }
+    case 'karte loeschen': {
+      brauche(opt, 'set', 'nr');
+      if (opt.ja !== true) throw new store.Fehler('Löschen nur nach ausdrücklicher Bestätigung des Nutzers, dann mit --ja aufrufen.', 'bestaetigung_fehlt', ['ja']);
+      const r = store.loescheKarte(opt.set, zahl(opt.nr, 'nr'));
+      return ausgabe({ ok: true, ...r, png_veraltet: store.ladeSet(opt.set).png_veraltet || [] });
     }
     case 'karte zeigen':
       brauche(opt, 'set', 'nr');
