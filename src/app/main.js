@@ -10,8 +10,9 @@ const { rendereKarten, druckePdf, vorschauBild } = require('../render/render');
 const { arbeitsbilder } = require('../render/bilder');
 const update = require('./update');
 
-// Der Datenordner heißt weiter wie vor dem Umbenennen der App, damit die Liste der Sets erhalten bleibt
-app.setPath('userData', path.join(app.getPath('appData'), 'card-creator'));
+// Der Datenordner heißt weiter wie vor dem Umbenennen der App, damit die Liste der Sets erhalten bleibt.
+// CTCG_DATEN setzt einen anderen Ordner, z. B. für Screenshots mit einem Beispielset statt der eigenen Sets.
+app.setPath('userData', process.env.CTCG_DATEN || path.join(app.getPath('appData'), 'card-creator'));
 
 const LOGO = path.join(__dirname, '..', '..', 'assets', 'logo', 'ctcg-logo.png');
 

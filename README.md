@@ -16,6 +16,22 @@ Eigene Kartensets erstellen, bearbeiten und verwalten:
 
 Private Fotos und die daraus entstandenen Karten werden nie veröffentlicht. Sie gehen nur an den privaten Kreis und als Druckauftrag an den Druckdienst. Fotos, Karten und Druckdateien liegen in `data/` und `results/` und werden nicht eingecheckt.
 
+## Screenshots
+
+Die Bilder zeigen ein Beispielset mit selbst gezeichneten Motiven, keine Fotos.
+
+Übersicht eines Sets mit verschiedenen Layouts (Normal, Vollbild, Regenbogen, Gold, Trainer, Energie):
+
+![Set-Übersicht](docs/screenshots/set-uebersicht.png)
+
+Karte bearbeiten, rechts die Vorschau:
+
+![Karte bearbeiten](docs/screenshots/karte-bearbeiten.png)
+
+Startseite mit der Liste der Sets:
+
+![Startseite](docs/screenshots/start.png)
+
 ## Herunterladen
 
 Fertige Windows-Versionen stehen unter [Releases](https://github.com/christianngl/ctcg-creator/releases):
@@ -36,6 +52,8 @@ Neue Version bauen: Version in `package.json` erhöhen und committen, `npm run d
 ## Wo die Daten liegen
 
 Jedes Set liegt in einem eigenen Ordner, den du beim Anlegen auswählst. Darin stehen normale Dateien, die du im Explorer siehst und sichern kannst: `set.json`, `karten/` (jede Version einer Karte), `bilder/`, `sammlung.json` sowie `export/png/` und `export/druck/`. Set-Ordner liegen außerhalb dieses Repos.
+
+Die Liste der Sets und die Einstellungen der App stehen in `%APPDATA%\card-creator`. Mit der Umgebungsvariable `CTCG_DATEN=<ordner>` nimmt die App stattdessen diesen Ordner, z. B. für Screenshots mit einem Beispielset (in `zuletzt.json` steht dann nur dessen Pfad).
 
 Die Vorlagen (nur Rahmen und Layout, ohne Fotos und Texte) liegen unter `src/vorlagen/`.
 
