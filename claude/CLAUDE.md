@@ -137,10 +137,10 @@ Unter Windows mit der Bash von Claude Code Pfade mit Laufwerksbuchstaben und `/`
 
 | Feld | Layouts | Pflicht | Format |
 |---|---|---|---|
-| `layout` | alle | ja | `normal`, `vollbild`, `gold`, `regenbogen` (Vollbild), `regenbogen-normal` (Fotofenster oben), `trainer`, `energie` (Spielkarten) oder `sammel`, `sammel-regenbogen` (Sammelkarten). Regenbogenkarten haben Regenbogenrahmen und -glanz fest eingebaut |
+| `layout` | alle | ja | `normal`, `vollbild`, `gold`, `regenbogen` (Vollbild), `regenbogen-normal` (Fotofenster oben), `trainer`, `energie` (Spielkarten) oder `sammel`, `sammel-regenbogen` (Sammelkarten). Regenbogenkarten haben einen Regenbogenrahmen, den Glanz darüber regelt `regenbogenglanz` (0–1, Standard 0.75, 0 = ohne Glanz) |
 | `name` | alle | ja | Text, Schriftgröße passt sich an (`namensgroesse` erzwingt sie) |
-| `bild` | alle | ja | `{datei, skalierung, x, y}`: das Foto füllt das Fenster immer ganz, `x`/`y` (-100 bis 100) wählen den sichtbaren Ausschnitt (positiv = Foto nach rechts/unten), `skalierung` ab 1 zoomt hinein. Das Originalfoto bleibt unverändert in `bilder/` |
-| `bildquelle` | alle | ja | `foto` \| `ki` |
+| `bild` | alle (energie nur mit `hintergrund: bild`) | ja | `{datei, skalierung, x, y}`: das Foto füllt das Fenster immer ganz, `x`/`y` (-100 bis 100) wählen den sichtbaren Ausschnitt (positiv = Foto nach rechts/unten), `skalierung` ab 1 zoomt hinein. Das Originalfoto bleibt unverändert in `bilder/` |
+| `bildquelle` | alle (energie nur mit `hintergrund: bild`) | ja | `foto` \| `ki` |
 | `seltenheit` | alle | wenn das Set Seltenheiten hat | Name einer Seltenheit |
 | `holo` | alle | nein | veraltet: `true` = Holo-Rahmen bei älteren Karten, neu stattdessen Layout `regenbogen` bzw. `sammel-regenbogen` |
 | `folie` | alle | nein | Effekt `{art: glitzer|sterne|kosmos|regenbogen|glanz, bereich: bild|karte, staerke: 0.1–1}` |
@@ -149,7 +149,7 @@ Unter Windows mit der Bash von Claude Code Pfade mit Laufwerksbuchstaben und `/`
 | `stufe`, `kp`, `typ`, `attacken` | normal, vollbild, gold, regenbogen, regenbogen-normal | ja | `attacken`: 1–2 × `{kosten: [Typ, …], name, schaden, text}` |
 | `entwickelt_aus`, `schwaeche`, `resistenz`, `rueckzug`, `flavor` | normal, vollbild, gold, regenbogen, regenbogen-normal | nein | `band` (Text 1) und `band2` (Text 2) nur bei normal und regenbogen-normal: das Band zeigt immer „Nr. 007 · Text 1 · Text 2“, die Nummer setzt die App, `goldton` (Standard `true`) nur bei gold |
 | `effekt` | trainer | ja | dazu optional `untertyp`, `regel`, `flavor` |
-| `typ`, `energien` | energie | `typ` ja | Energiekarte als Vollbild: `typ` bestimmt Symbol und Farbe, `energien` (1–5, Standard 1) wie viele Energie-Symbole die Karte zeigt, dazu optional `flavor` |
+| `typ`, `energien`, `hintergrund` | energie | `typ` ja | Energiekarte: `typ` bestimmt Symbol und Farbe, `energien` (1–5, Standard 1) wie viele Energie-Symbole groß in der Mitte stehen, `hintergrund` ist `typ`, `strahlen`, `dunkel`, `gold`, `regenbogen` oder `bild` (eigenes Hintergrundbild, dann sind `bild` und `bildquelle` Pflicht; ältere Karten mit Foto gelten als `bild`), dazu optional `flavor` |
 | `beschreibung`, `typ` | sammel, sammel-regenbogen | nein | |
 | `kommentar` | alle | nein | Notiz für spätere Bearbeitungen und Ideen, erscheint nicht auf der Karte |
 | `kopiert_von` | alle | nein | `{nummer, version}`, setzt `karte kopieren` |

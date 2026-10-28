@@ -121,7 +121,7 @@ async function main(argv) {
       return ausgabe({ ok: true, vorlagen: Object.values(VORLAGEN).map((v) => ({ id: v.id, name: v.name, standardFormat: v.standardFormat, formatVorschlaege: v.formatVorschlaege, layouts: v.layouts })) });
     case 'vorlage zeigen': {
       const v = vorlage(pos[2] || 'tcg');
-      return ausgabe({ ok: true, id: v.id, name: v.name, standardFormat: v.standardFormat, formatVorschlaege: v.formatVorschlaege, layouts: v.layouts, felder: v.felder, folien: v.folien, standard: v.standard });
+      return ausgabe({ ok: true, id: v.id, name: v.name, standardFormat: v.standardFormat, formatVorschlaege: v.formatVorschlaege, layouts: v.layouts, felder: v.felder, folien: v.folien, energieHintergruende: v.energieHintergruende, standard: v.standard });
     }
     case 'set neu':
       brauche(opt, 'ordner');

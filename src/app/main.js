@@ -56,7 +56,7 @@ function speichereEinstellung(schluessel, wert) {
 function setInfo(ordner) {
   const set = store.ladeSet(ordner);
   const v = vorlage(set.vorlage);
-  return { set, vorlage: { id: v.id, name: v.name, layouts: v.layouts, felder: v.felder, folien: v.folien || {}, standardFormat: v.standardFormat, formatVorschlaege: v.formatVorschlaege } };
+  return { set, vorlage: { id: v.id, name: v.name, layouts: v.layouts, felder: v.felder, folien: v.folien || {}, energieHintergruende: v.energieHintergruende || {}, regenbogenLayouts: v.regenbogenLayouts || [], standardGlanz: v.standardGlanz, standardFormat: v.standardFormat, formatVorschlaege: v.formatVorschlaege } };
 }
 
 let fenster;

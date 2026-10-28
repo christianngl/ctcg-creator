@@ -31,14 +31,37 @@ const LAYOUTS = {
   normal: { titel: 'Normal (Fotofenster oben)', kartentyp: 'spielkarte', aufbau: 'spiel' },
   vollbild: { titel: 'Vollbild (Foto über die ganze Karte)', kartentyp: 'spielkarte', aufbau: 'spiel' },
   gold: { titel: 'Goldkarte (Vollbild in Gold)', kartentyp: 'spielkarte', aufbau: 'spiel' },
-  regenbogen: { titel: 'Regenbogenkarte (Vollbild mit Regenbogenglanz)', kartentyp: 'spielkarte', aufbau: 'spiel' },
-  'regenbogen-normal': { titel: 'Regenbogenkarte (Fotofenster oben, Regenbogenglanz)', kartentyp: 'spielkarte', aufbau: 'spiel' },
+  regenbogen: { titel: 'Regenbogenkarte (Vollbild, Glanz einstellbar)', kartentyp: 'spielkarte', aufbau: 'spiel' },
+  'regenbogen-normal': { titel: 'Regenbogenkarte (Fotofenster oben, Glanz einstellbar)', kartentyp: 'spielkarte', aufbau: 'spiel' },
   trainer: { titel: 'Trainer (Effektkarte)', kartentyp: 'spielkarte', aufbau: 'trainer' },
-  energie: { titel: 'Energiekarte (Vollbild mit Energie-Symbolen)', kartentyp: 'spielkarte', aufbau: 'energie' },
+  energie: { titel: 'Energiekarte (großes Symbol in der Mitte)', kartentyp: 'spielkarte', aufbau: 'energie' },
   sammel: { titel: 'Sammelkarte (Bild, Name, Beschreibung)', kartentyp: 'sammelkarte', aufbau: 'sammel' },
-  'sammel-regenbogen': { titel: 'Regenbogen-Sammelkarte (mit Regenbogenglanz)', kartentyp: 'sammelkarte', aufbau: 'sammel' },
+  'sammel-regenbogen': { titel: 'Regenbogen-Sammelkarte (Glanz einstellbar)', kartentyp: 'sammelkarte', aufbau: 'sammel' },
 };
 const aufbau = (layout) => (LAYOUTS[layout] || {}).aufbau;
+
+// Regenbogenkarten: Rahmen in Regenbogenfarben, der Glanz über dem Foto lässt sich abschwächen oder ganz abschalten (0)
+const REGENBOGEN_LAYOUTS = ['regenbogen', 'regenbogen-normal', 'sammel-regenbogen'];
+const STANDARD_GLANZ = 0.75;
+
+// Hintergründe der Energiekarte. "bild" = eigenes Bild (Feld bild), die anderen zeichnet die Vorlage selbst (card.css, .eh-…).
+const ENERGIE_HINTERGRUENDE = {
+  typ: 'Farbe des Typs',
+  strahlen: 'Farbe des Typs mit Strahlen',
+  dunkel: 'Nachthimmel',
+  gold: 'Gold',
+  regenbogen: 'Regenbogen',
+  bild: 'eigenes Bild',
+};
+
+// Ältere Energiekarten ohne Angabe hatten immer ein Foto, neue ohne Bild bekommen die Farbe des Typs
+function energieHintergrund(karte) {
+  if (karte.hintergrund) return karte.hintergrund;
+  return karte.bild && karte.bild.datei ? 'bild' : 'typ';
+}
+
+// Energiekarten brauchen nur ein Bild, wenn ihr Hintergrund ein eigenes Bild ist
+const brauchtBild = (karte) => aufbau(karte.layout) !== 'energie' || energieHintergrund(karte) === 'bild';
 
 // Folien-Effekte wie bei Holo-Karten. Statisch gezeichnet, damit sie genau so gedruckt werden.
 const FOLIEN = {
@@ -51,7 +74,7 @@ const FOLIEN = {
 
 // Stil = Gestaltung ohne Inhalte. "Stil übertragen" kopiert diese Felder, das Layout nur bei gleichem Aufbau,
 // weil sonst Pflichtfelder wegfallen oder fehlen würden (z. B. normal -> trainer).
-const STIL_FELDER = ['folie', 'format', 'holo', 'goldton'];
+const STIL_FELDER = ['folie', 'format', 'holo', 'goldton', 'regenbogenglanz'];
 
 // Änderungen, die den Stil von quelle auf ziel übertragen. Fehlt ein Feld in der Quelle, wird es beim Ziel entfernt (undefined).
 function stilVon(quelle, ziel) {
@@ -93,8 +116,8 @@ const FELDER = {
   },
   vollbild: 'wie normal, ohne band',
   gold: 'wie vollbild, dazu goldton: true | false (Foto in Gold eingefärbt, Standard true)',
-  regenbogen: 'wie vollbild, mit Regenbogenrahmen und Regenbogenglanz über dem Foto',
-  'regenbogen-normal': 'wie normal (Fotofenster oben, mit band), mit Regenbogenrahmen und Regenbogenglanz über der ganzen Karte',
+  regenbogen: `wie vollbild, mit Regenbogenrahmen und Regenbogenglanz über dem Foto, dazu regenbogenglanz: Stärke 0–1 (0 = ohne Glanz, Standard ${STANDARD_GLANZ})`,
+  'regenbogen-normal': 'wie normal (Fotofenster oben, mit band), mit Regenbogenrahmen und Regenbogenglanz über der ganzen Karte, dazu regenbogenglanz wie bei regenbogen',
   trainer: {
     untertyp: 'Text, z. B. UNTERSTÜTZER, optional',
     effekt: 'Text (Pflicht)',
@@ -102,13 +125,14 @@ const FELDER = {
   },
   energie: {
     typ: 'Name eines Typs des Sets (Pflicht), bestimmt Symbol und Farbe',
-    energien: 'Zahl 1–5, wie viele Energie-Symbole die Karte zeigt (Standard 1)',
+    energien: 'Zahl 1–5, wie viele Energie-Symbole groß in der Mitte stehen (Standard 1)',
+    hintergrund: `${Object.keys(ENERGIE_HINTERGRUENDE).join(' | ')} – Standard typ (ohne Bild) bzw. bild (mit Bild). Nur bei bild sind bild und bildquelle Pflicht`,
   },
   sammel: {
     typ: 'Name eines Typs des Sets, optional (färbt die Karte)',
     beschreibung: 'Text, optional',
   },
-  'sammel-regenbogen': 'wie sammel, mit Regenbogenrahmen und Regenbogenglanz über dem Bild',
+  'sammel-regenbogen': 'wie sammel, mit Regenbogenrahmen und Regenbogenglanz über dem Bild, dazu regenbogenglanz wie bei regenbogen',
 };
 
 // Raster: 690 px Breite für die ganze Karte samt Beschnitt. Die Höhe ergibt sich aus dem Format,
@@ -160,8 +184,10 @@ function pruefe(set, karte) {
     offen.push(`layout: ${karte.layout} passt nicht zum Kartentyp ${set.kartentyp} des Sets (möglich: ${passend.join(', ')})`);
   }
   if (leer(karte.name)) offen.push('name');
-  if (!karte.bild || leer(karte.bild.datei)) offen.push('bild.datei');
-  if (!['foto', 'ki'].includes(karte.bildquelle)) offen.push('bildquelle: foto oder ki');
+  if (brauchtBild(karte)) {
+    if (!karte.bild || leer(karte.bild.datei)) offen.push('bild.datei');
+    if (!['foto', 'ki'].includes(karte.bildquelle)) offen.push('bildquelle: foto oder ki');
+  }
   if ((set.seltenheiten || []).length) {
     if (leer(karte.seltenheit)) offen.push('seltenheit');
     else if (!set.seltenheiten.some((s) => s.name === karte.seltenheit)) offen.push(`seltenheit: unbekannt (${karte.seltenheit})`);
@@ -172,6 +198,7 @@ function pruefe(set, karte) {
     if (fehler) offen.push(fehler);
   }
   if (karte.folie && karte.folie.art && !FOLIEN[karte.folie.art]) offen.push(`folie.art: eines von ${Object.keys(FOLIEN).join(', ')}`);
+  if (!leer(karte.regenbogenglanz) && !(Number(karte.regenbogenglanz) >= 0 && Number(karte.regenbogenglanz) <= 1)) offen.push('regenbogenglanz: Zahl 0 bis 1');
 
   if (aufbau(karte.layout) === 'spiel') {
     if (leer(karte.stufe)) offen.push('stufe');
@@ -188,6 +215,7 @@ function pruefe(set, karte) {
   if (aufbau(karte.layout) === 'energie') {
     if (leer(karte.typ)) offen.push('typ');
     if (!leer(karte.energien) && !(Number.isInteger(Number(karte.energien)) && karte.energien >= 1 && karte.energien <= 5)) offen.push('energien: Zahl 1 bis 5');
+    if (!ENERGIE_HINTERGRUENDE[energieHintergrund(karte)]) offen.push(`hintergrund: eines von ${Object.keys(ENERGIE_HINTERGRUENDE).join(', ')}`);
   }
   return offen;
 }
@@ -309,18 +337,25 @@ function karteHtml(set, karte, { bildUrl, gesamt }) {
   const klassen = ['card', { normal: 'normal', vollbild: 'full', gold: 'full goldkarte', regenbogen: 'full regenbogenkarte', 'regenbogen-normal': 'normal regenbogenkarte', energie: 'full energiekarte', trainer: 'trainer', sammel: 'sammel', 'sammel-regenbogen': 'sammel regenbogenkarte' }[karte.layout] || 'normal'];
   if (typ) klassen.push(`ty-${slug(typ.name)}`);
   if (karte.holo) klassen.push('holo');
+  const hintergrund = aufbau(karte.layout) === 'energie' ? energieHintergrund(karte) : null;
+  if (hintergrund) klassen.push(`eh-${hintergrund}`);
   const teile = ['<div class="gold"></div>'];
   const folie = folieHtml(karte);
   const folieImBild = folie && (karte.folie.bereich || 'bild') === 'bild' ? folie : '';
-  // Regenbogenkarten haben den Regenbogenglanz fest über dem Foto, ein Folien-Effekt kommt bei Bedarf dazu
-  const glanz = ['regenbogen', 'regenbogen-normal', 'sammel-regenbogen'].includes(karte.layout) ? '<div class="regenbogenglanz"></div>' : '';
+  // Regenbogenkarten haben den Regenbogenglanz über dem Foto (Stärke regenbogenglanz, 0 = ohne), ein Folien-Effekt kommt bei Bedarf dazu
+  const glanzStaerke = REGENBOGEN_LAYOUTS.includes(karte.layout) ? Math.max(0, Math.min(1, Number(karte.regenbogenglanz ?? STANDARD_GLANZ) || 0)) : 0;
+  const glanzHtml = (staerke) => (staerke ? `<div class="regenbogenglanz" style="opacity:${+staerke.toFixed(3)}"></div>` : '');
+  const glanz = glanzHtml(glanzStaerke);
 
-  if (['vollbild', 'gold', 'regenbogen', 'energie'].includes(karte.layout)) {
+  if (hintergrund && hintergrund !== 'bild') {
+    // Energiekarte ohne eigenes Bild: den Hintergrund zeichnet card.css (.eh-…)
+    teile.push(`<div class="panel">${folieImBild}<div class="shade"></div></div>`);
+  } else if (['vollbild', 'gold', 'regenbogen', 'energie'].includes(karte.layout)) {
     const goldton = karte.layout === 'gold' && karte.goldton !== false ? ' goldton' : '';
     teile.push(`<div class="panel">${foto(karte, bildUrl, goldton)}${glanz}${folieImBild}<div class="shade"></div></div>`);
   } else {
-    // Bei regenbogen-normal liegt der Glanz auch über der Kartenfläche, nicht nur über dem Foto
-    const flaeche = karte.layout === 'regenbogen-normal' ? glanz : '';
+    // Bei regenbogen-normal liegt der Glanz auch über der Kartenfläche (etwas schwächer), nicht nur über dem Foto
+    const flaeche = karte.layout === 'regenbogen-normal' ? glanzHtml(glanzStaerke * 0.8) : '';
     teile.push(`<div class="panel">${flaeche}</div>`, `<div class="win">${foto(karte, bildUrl)}${glanz}${folieImBild}</div>`);
   }
 
@@ -331,7 +366,7 @@ function karteHtml(set, karte, { bildUrl, gesamt }) {
     teile.push(`<div class="effect">${absatz(karte.effekt)}</div>`);
     if (karte.regel) teile.push(`<div class="rule">${absatz(karte.regel)}</div>`);
   } else if (aufbau(karte.layout) === 'energie') {
-    // Große Energie-Symbole in der Farbe des Typs, Anzahl aus "energien"
+    // Energie-Symbole groß in der Mitte der Karte in der Farbe des Typs, Anzahl aus "energien"
     teile.push('<div class="tpill">ENERGIE</div>');
     teile.push(name(karte));
     const n = Math.max(1, Math.min(5, Number(karte.energien) || 1));
@@ -362,7 +397,8 @@ function karteHtml(set, karte, { bildUrl, gesamt }) {
   teile.push(fusszeile(set, karte, gesamt));
   if (folie && !folieImBild) teile.push(folie);
   const { dh } = masse(formatVon(set, karte));
-  return `<div class="${klassen.join(' ')}" style="--dh:${dh}px">${teile.join('')}</div>`;
+  const typfarbe = hintergrund && typ ? `;--typfarbe:${esc(typ.farbe)}` : '';
+  return `<div class="${klassen.join(' ')}" style="--dh:${dh}px${typfarbe}">${teile.join('')}</div>`;
 }
 
 // format: Format der Karten, zu denen diese Rückseite gedruckt wird
@@ -390,6 +426,9 @@ module.exports = {
   formatVon,
   layouts: LAYOUTS,
   folien: FOLIEN,
+  energieHintergruende: ENERGIE_HINTERGRUENDE,
+  regenbogenLayouts: REGENBOGEN_LAYOUTS,
+  standardGlanz: STANDARD_GLANZ,
   entfernteFolien: ENTFERNTE_FOLIEN,
   felder: FELDER,
   standard: { typen: STANDARD_TYPEN, seltenheiten: STANDARD_SELTENHEITEN },

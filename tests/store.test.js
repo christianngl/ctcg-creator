@@ -278,6 +278,45 @@ test('Energiekarte: Vollbild mit so vielen Energie-Symbolen wie angegeben, Typ i
   assert.equal((eins.match(/<span class="e feuer">/g) || []).length, 1);
   assert.throws(() => store.neueKarte(ordner, energie({ typ: undefined })), (e) => e.offene_punkte.includes('typ'));
   assert.throws(() => store.neueKarte(ordner, energie({ energien: 6 })), (e) => e.offene_punkte.includes('energien: Zahl 1 bis 5'));
+  // Ältere Energiekarten mit Foto behalten es als Hintergrund
+  assert.match(html, /energiekarte[^"]*eh-bild/);
+  assert.match(html, /<img class="photo"/);
+});
+
+test('Energiekarte ohne Bild: Hintergrund wählbar, Bild nur beim eigenen Hintergrundbild Pflicht', () => {
+  const { ordner, bild } = neuesSet();
+  const energie = (extra) => ({ layout: 'energie', name: 'Feuer-Energie', seltenheit: 'häufig', typ: 'Feuer', ...extra });
+  const k = store.neueKarte(ordner, energie());
+  const html = karteSeite(store.ladeSet(ordner), k);
+  assert.match(html, /energiekarte[^"]*eh-typ/);
+  assert.match(html, /--typfarbe:#e2422a/);
+  assert.doesNotMatch(html, /class="photo/);
+  assert.equal((html.match(/<span class="e feuer">/g) || []).length, 1);
+  for (const hg of ['strahlen', 'dunkel', 'gold', 'regenbogen']) {
+    assert.match(karteSeite(store.ladeSet(ordner), store.neueKarte(ordner, energie({ hintergrund: hg }))), new RegExp(`eh-${hg}`));
+  }
+  assert.throws(() => store.neueKarte(ordner, energie({ hintergrund: 'bild' })), (e) => e.offene_punkte.includes('bild.datei'));
+  assert.throws(() => store.neueKarte(ordner, energie({ hintergrund: 'wolken' })), (e) => e.offene_punkte.some((p) => p.startsWith('hintergrund')));
+  const eigen = store.neueKarte(ordner, energie({ hintergrund: 'bild', bild: { datei: bild }, bildquelle: 'foto' }));
+  assert.match(karteSeite(store.ladeSet(ordner), eigen), /<img class="photo"/);
+});
+
+test('Regenbogenglanz lässt sich abschwächen oder abschalten, der Regenbogenrahmen bleibt', () => {
+  const { ordner, bild } = neuesSet();
+  const set = () => store.ladeSet(ordner);
+  const standard = karteSeite(set(), store.neueKarte(ordner, spielkarte(bild, { layout: 'regenbogen' })));
+  assert.match(standard, /class="regenbogenglanz" style="opacity:0.75"/);
+  const schwach = karteSeite(set(), store.neueKarte(ordner, spielkarte(bild, { layout: 'regenbogen-normal', regenbogenglanz: 0.5 })));
+  assert.match(schwach, /class="regenbogenglanz" style="opacity:0.5"/);
+  assert.match(schwach, /class="regenbogenglanz" style="opacity:0.4"/);
+  const ohne = store.neueKarte(ordner, spielkarte(bild, { layout: 'regenbogen', regenbogenglanz: 0 }));
+  const ohneHtml = karteSeite(set(), ohne);
+  assert.match(ohneHtml, /class="card full regenbogenkarte/);
+  assert.doesNotMatch(ohneHtml, /regenbogenglanz/);
+  assert.throws(() => store.neueKarte(ordner, spielkarte(bild, { layout: 'regenbogen', regenbogenglanz: 2 })), (e) => e.offene_punkte.includes('regenbogenglanz: Zahl 0 bis 1'));
+  // Die Glanzstärke gehört zum Stil
+  store.uebertrageStil(ordner, ohne.nummer, [1]);
+  assert.equal(store.ladeKarte(ordner, 1).regenbogenglanz, 0);
 });
 
 test('Effekt Strahlen gibt es nicht mehr, alte Karten verlieren ihn beim Speichern', () => {

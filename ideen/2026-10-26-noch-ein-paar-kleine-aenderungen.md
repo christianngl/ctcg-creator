@@ -1,10 +1,10 @@
 ---
 titel: noch ein paar kleine änderungen
-status: offen
+status: erledigt
 erstellt: 2026-10-26
 uhrzeit: 21:06
 issue: 16
-abgeglichen: offen
+abgeglichen: erledigt
 ---
 
 1. es sollte regenbogenkarten (ohne regenbogenglanz) geben

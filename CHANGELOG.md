@@ -4,6 +4,9 @@ Alle für Nutzer spürbaren Änderungen an cTCG Creator (früher Card Creator).
 
 ## [Unveröffentlicht]
 
+- Regenbogenkarten haben einen Regler „Regenbogenglanz“: Der Glanz über dem Foto lässt sich abschwächen oder ganz ausschalten (0 = Regenbogenkarte ohne Glanz, nur mit Regenbogenrahmen). Per Kommandozeile mit `regenbogenglanz` (0 bis 1). Die Stärke wird beim „Stil übertragen“ mitgenommen.
+- Energiekarten zeigen das Energie-Symbol jetzt groß in der Mitte der Karte. Als Hintergrund wählt man die Farbe des Typs, Typfarbe mit Strahlen, Nachthimmel, Gold, Regenbogen oder ein eigenes Bild. Ein Bild braucht die Energiekarte nur noch beim eigenen Hintergrund. Bestehende Energiekarten behalten ihr Foto als Hintergrund.
+
 ## [0.5.0] – 2026-10-25
 
 - Karten lassen sich löschen (Knopf „Löschen …“ im Editor oder ✕ auf der Kachel in der Übersicht) und per Drag & Drop umsortieren: einfach eine Karte auf die Stelle einer anderen ziehen. Die Nummern bleiben fortlaufend, Karten mit neuer Nummer bekommen eine neue Version, Besitz und Titelkarte ziehen mit. Gelöschte Karten landen im Ordner „papierkorb“ des Sets.

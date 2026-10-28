@@ -121,14 +121,25 @@
 .sammel.regenbogenkarte .panel{background:linear-gradient(160deg,#ffe3e3,#fff2cc 25%,#e0fbe0 50%,#dcefff 75%,#f1e2ff)}
 .sammel.regenbogenkarte .beschr{border-color:#be82ff}
 
-/* Energiekarte: Vollbild-Aufbau, Name oben, große Energie-Symbole unten (1–5) */
+/* Energiekarte: Name oben, Energie-Symbole (1–5) groß in der Mitte der Karte. Hintergrund: eigenes Bild (.eh-bild)
+   oder von der Vorlage gezeichnet (.eh-typ, .eh-strahlen … mit --typfarbe aus vorlage.js) */
 .energiekarte .name{top:110px;width:530px}
-.energien{left:80px;top:calc(620px + var(--dh,0px));width:530px;height:170px;display:flex;align-items:center;justify-content:center;gap:18px}
-.energien .e{width:150px;height:150px;font-size:84px;border-width:8px;box-shadow:0 4px 14px rgba(0,0,0,.55)}
-.energien.n2 .e{width:140px;height:140px;font-size:78px}
-.energien.n3 .e{width:130px;height:130px;font-size:72px}
-.energien.n4 .e{width:112px;height:112px;font-size:62px;border-width:6px}
-.energien.n5 .e{width:92px;height:92px;font-size:50px;border-width:5px}
+.energien{left:62px;top:calc(470px + var(--dh,0px) / 2);width:566px;transform:translateY(-50%);display:flex;flex-wrap:wrap;align-items:center;align-content:center;justify-content:center;gap:22px}
+.energien .e{width:330px;height:330px;font-size:190px;border-width:12px;box-shadow:0 6px 22px rgba(0,0,0,.55)}
+.energien.n2 .e{width:230px;height:230px;font-size:130px;border-width:10px}
+.energien.n3 .e{width:160px;height:160px;font-size:90px;border-width:8px}
+.energien.n4{padding:0 90px}
+.energien.n4 .e{width:170px;height:170px;font-size:96px;border-width:8px}
+.energien.n5{padding:0 20px}
+.energien.n5 .e{width:150px;height:150px;font-size:84px;border-width:7px}
+.energiekarte:not(.eh-bild) .shade{background:linear-gradient(to bottom,rgba(10,14,32,.45) 0%,rgba(10,14,32,0) 18%,rgba(10,14,32,0) 80%,rgba(10,14,32,.5) 100%)}
+.energiekarte.eh-typ .panel{background:radial-gradient(circle at 50% 50%,#fff 0%,color-mix(in srgb,var(--typfarbe,#808ea2) 30%,#fff) 26%,var(--typfarbe,#808ea2) 62%,color-mix(in srgb,var(--typfarbe,#808ea2) 55%,#000) 100%)}
+.energiekarte.eh-strahlen .panel{background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.95) 0%,rgba(255,255,255,0) 42%),
+  repeating-conic-gradient(from 0deg at 50% 50%,var(--typfarbe,#808ea2) 0deg 7.5deg,color-mix(in srgb,var(--typfarbe,#808ea2) 55%,#fff) 7.5deg 15deg)}
+.energiekarte.eh-dunkel .panel{background:radial-gradient(circle,rgba(255,255,255,.7) 1px,transparent 1.8px) 0 0/37px 41px,radial-gradient(circle,rgba(255,255,255,.45) 1.2px,transparent 2px) 13px 19px/53px 47px,
+  radial-gradient(circle at 50% 50%,#3a4686 0%,#1a2048 50%,#0a0d22 100%)}
+.energiekarte.eh-gold .panel{background:radial-gradient(circle at 50% 50%,rgba(255,250,220,.95) 0%,rgba(255,250,220,0) 45%),linear-gradient(135deg,#7a5a14 0%,#f6dc8c 22%,#b8862b 45%,#fbe7a1 68%,#8c6a1c 100%)}
+.energiekarte.eh-regenbogen .panel{background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.95) 0%,rgba(255,255,255,0) 45%),linear-gradient(160deg,#ff8f8f 0%,#ffd77a 20%,#93ef93 40%,#7fcaff 60%,#bd8fff 80%,#ff8fd2 100%)}
 
 /* Folien-Effekte (Feld "folie"): im Bild oder über der ganzen Karte */
 .fx{position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden}

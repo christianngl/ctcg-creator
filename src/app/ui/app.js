@@ -556,6 +556,7 @@ function stilText(k) {
   teile.push(k.format ? `Format ${k.format.hoehe} × ${k.format.breite} mm` : 'Set-Standardformat');
   if (k.holo) teile.push('Holo-Rahmen');
   if (k.layout === 'gold') teile.push(k.goldton !== false ? 'Foto in Gold' : 'Foto in Farbe');
+  if ((v.regenbogenLayouts || []).includes(k.layout)) teile.push(`Regenbogenglanz ${glanzText(k.regenbogenglanz ?? v.standardGlanz)}`);
   return teile.join(', ');
 }
 
@@ -660,24 +661,43 @@ function aendereKosten(knopf) {
   eingabe.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
+const glanzText = (wert) => (Number(wert) > 0 ? `${Math.round(Number(wert) * 100)} %` : 'aus (ohne Glanz)');
+
+// Wie vorlage.js: ältere Energiekarten mit Foto haben ein eigenes Hintergrundbild, neue starten mit der Farbe des Typs
+const energieHintergrund = (k) => k.hintergrund || (k.bild && k.bild.datei ? 'bild' : 'typ');
+
 function baueFormular() {
   const k = zustand.karte;
   const s = zustand.info.set;
   const typen = (s.typen || []).map((t) => [t.name, `${t.symbol} ${t.name}`]);
   const seltenheiten = (s.seltenheiten || []).map((x) => [x.name, `${x.symbol} ${x.name}`]);
   const b = k.bild || {};
+  const v = zustand.info.vorlage;
   const teile = [
     auswahl('layout', 'Layout', layoutsDesSets().map(([id, l]) => [id, l.titel])),
     feld('name', 'Name'),
     '<fieldset class="formatfeld" id="karteFormat"></fieldset>',
-    `<fieldset><legend>Bild</legend>
+  ];
+  // Energiekarten brauchen nur ein Bild, wenn sie ein eigenes Hintergrundbild haben
+  const energie = aufbauVon(k.layout) === 'energie';
+  if (energie) {
+    k.hintergrund = energieHintergrund(k);
+    teile.push(auswahl('hintergrund', 'Hintergrund', Object.entries(v.energieHintergruende || {})));
+  }
+  if (!energie || k.hintergrund === 'bild') {
+    teile.push(`<fieldset><legend>${energie ? 'Hintergrundbild' : 'Bild'}</legend>
       <div class="bildzeile ganz"><span class="dateiname">${esc(b.datei || 'kein Bild – Datei auf die Karte ziehen')}</span><button type="button" id="btnBild">Bild wählen …</button></div>
       <label>Zoom <input type="range" data-bild="skalierung" min="1" max="3" step="0.01" value="${b.skalierung || 1}"></label>
       ${auswahl('bildquelle', 'Bildquelle', [['foto', 'eigenes Foto'], ['ki', 'KI-generiert']])}
       <label>Verschieben waagrecht <input type="range" data-bild="x" min="-100" max="100" step="0.5" value="${b.x || 0}"></label>
       <label>Verschieben senkrecht <input type="range" data-bild="y" min="-100" max="100" step="0.5" value="${b.y || 0}"></label>
-    </fieldset>`,
-  ];
+    </fieldset>`);
+  }
+  if ((v.regenbogenLayouts || []).includes(k.layout)) {
+    const glanz = k.regenbogenglanz ?? v.standardGlanz;
+    teile.push(`<label class="ganz">Regenbogenglanz <span class="hinweis" id="glanzWert">${glanzText(glanz)}</span>
+      <input type="range" data-feld="regenbogenglanz" min="0" max="1" step="0.05" value="${glanz}"></label>`);
+  }
   if (seltenheiten.length) teile.push(auswahl('seltenheit', 'Seltenheit', seltenheiten, { leer: true }));
   // Holo-Rahmen gibt es nur noch für ältere Karten, neu dafür das Layout Regenbogenkarte
   if (k.holo) teile.push('<label class="zeile" title="Statt des Rahmens gibt es jetzt das Layout Regenbogenkarte"><input type="checkbox" data-feld="holo" checked> Holo-Rahmen (alt)</label>');
@@ -729,7 +749,9 @@ function baueFormular() {
   form.innerHTML = teile.join('');
   baueFormatFeld(form.querySelector('#karteFormat'), k.format, { vorschlaege: zustand.info.vorlage.formatVorschlaege, standard: s.format, titel: 'Kartenformat' });
   form.querySelector('[data-feld="layout"]').onchange = () => { zustand.karte = { ...leseFormular() }; baueFormular(); };
-  $('#btnBild').onclick = async () => {
+  const hg = form.querySelector('[data-feld="hintergrund"]');
+  if (hg) hg.onchange = () => { zustand.karte = leseFormular(); baueFormular(); };
+  if ($('#btnBild')) $('#btnBild').onclick = async () => {
     try {
       const datei = await rufe('bild:waehlen', zustand.info.set.ordner);
       if (!datei) return;
@@ -741,6 +763,7 @@ function baueFormular() {
   form.onclick = (e) => { const knopf = e.target.closest('[data-kosten]'); if (knopf) aendereKosten(knopf); };
   form.oninput = (e) => {
     if (e.target.dataset.bild !== undefined) return zeigeBildausschnitt();
+    if (e.target.dataset.feld === 'regenbogenglanz') $('#glanzWert').textContent = glanzText(e.target.value);
     // Name der ungespeicherten neuen Karte gleich in ihrer Kachel zeigen
     if (zustand.nr === null && e.target.dataset.feld === 'name') {
       const b = $('#karten [data-neu] b');
@@ -759,7 +782,7 @@ function leseFormular() {
   form.querySelectorAll('[data-feld]').forEach((el) => {
     const name = el.dataset.feld;
     if (el.type === 'checkbox') k[name] = el.checked;
-    else if (el.value.trim() !== '') k[name] = el.type === 'number' ? Number(el.value) : el.value;
+    else if (el.value.trim() !== '') k[name] = ['number', 'range'].includes(el.type) ? Number(el.value) : el.value;
   });
   form.querySelectorAll('[data-bild]').forEach((el) => { k.bild[el.dataset.bild] = Number(el.value); });
   const folie = {};
@@ -894,6 +917,8 @@ async function setzeBildAusDatei(datei) {
     const rel = await rufe('bild:importieren', zustand.info.set.ordner, window.cc.pfadVon(datei));
     zustand.karte = leseFormular();
     zustand.karte.bild = { datei: rel, skalierung: 1, x: 0, y: 0 };
+    // Ein Bild auf einer Energiekarte wird ihr Hintergrund
+    if (aufbauVon(zustand.karte.layout) === 'energie') zustand.karte.hintergrund = 'bild';
     baueFormular();
   } catch (e) { fehler(e); }
 }
